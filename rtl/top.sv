@@ -31,22 +31,9 @@ module top #(
     output wire [2:0] hdmi_tx_p, hdmi_tx_n,
     inout wire hdmi_tx_cec, hdmi_tx_rscl, hdmi_tx_rsda // unused
 );
-    // Reference clock: make 200 MHz from the board's 100 MHz.
-    //
-    // Why: HDMI bits arrive very fast (742.5 million per second per lane).
-    // To read each bit correctly, the receiver delays each input pin by a
-    // small adjustable amount so it reads in the middle of the bit, not at
-    // its edge. Those delay blocks need a 200 MHz clock to keep their delay
-    // steps accurate. Nothing else uses this clock.
-    //
-    // How: an MMCM is a clock generator built into the FPGA. It multiplies
-    // the input clock and then divides it: 100 MHz x 10 = 1000 MHz, / 5 =
-    // 200 MHz (CLKFBOUT_MULT_F and CLKOUT0_DIVIDE_F below). The "feedback"
-    // wires loop its output back to its input so it can keep the output in
-    // step. ref_locked turns 1 once the output is stable.
-    //
-    // BUFG: a clock buffer. It sends a clock over the dedicated clock wiring
-    // that reaches the whole chip with almost no delay.
+    // 200 MHz clock for the receiver's input delays, which shift when each
+    // HDMI bit is read. MMCM = clock generator: 100 MHz x 10 / 5 = 200 MHz.
+    // ref_locked = 1 when stable. BUFG = clock buffer for the whole chip.
     wire feedback, feedback_buf, ref_raw, ref_clk, ref_locked;
     MMCME2_BASE #(
         .CLKIN1_PERIOD(10.0), .DIVCLK_DIVIDE(1), .CLKFBOUT_MULT_F(10.0),
