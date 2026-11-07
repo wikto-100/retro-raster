@@ -1,5 +1,5 @@
-# Numato Mimas A7 V3.0, xc7a50tfgg484-1. See docs/hardware.md for provenance.
-# Only pins used by this design are included; do not add the entire master XDC.
+# Numato Mimas A7 V3.0, xc7a50tfgg484-1. Pins follow Numato's V3.0 master XDC;
+# only pins used by this design are included.
 set_property CFGBVS VCCO [current_design]
 set_property CONFIG_VOLTAGE 3.3 [current_design]
 set_property BITSTREAM.CONFIG.UNUSEDPIN Pullnone [current_design]

@@ -73,11 +73,6 @@
       "upstream_git_blob": "756e45b7b70b07b40231e4fe8162bc067bfc5174"
     },
     {
-      "path": "dvi2rgb/dvi2rgb.xdc",
-      "upstream_path": "ip/dvi2rgb/src/dvi2rgb.xdc",
-      "upstream_git_blob": "ea53af44685ecd58296c4ec8f524e5376b9d03b1"
-    },
-    {
       "path": "rgb2dvi/ClockGen.vhd",
       "upstream_path": "ip/rgb2dvi/src/ClockGen.vhd",
       "upstream_git_blob": "c907930e021ae3978009d68b3e0631e7e24ac7c4"
@@ -96,16 +91,6 @@
       "path": "rgb2dvi/rgb2dvi.vhd",
       "upstream_path": "ip/rgb2dvi/src/rgb2dvi.vhd",
       "upstream_git_blob": "7b076080b686c891419465083895a6e1a8383fd9"
-    },
-    {
-      "path": "rgb2dvi/rgb2dvi.xdc",
-      "upstream_path": "ip/rgb2dvi/src/rgb2dvi.xdc",
-      "upstream_git_blob": "5d402efa39f082dc363263c39b753fce11283108"
-    },
-    {
-      "path": "rgb2dvi/rgb2dvi_clocks.xdc",
-      "upstream_path": "ip/rgb2dvi/src/rgb2dvi_clocks.xdc",
-      "upstream_git_blob": "6ca365458a4013cd8e735d171ebc7deb48b86c11"
     }
   ]
 }

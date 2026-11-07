@@ -35,7 +35,7 @@ module tb_unit;
         if ({data[55], data[54]} !== 16'd7425 ||
             {data[58][7:4], data[56]} !== 12'd1280 ||
             {data[61][7:4], data[59]} !== 12'd720 || data[71] !== 8'h1e)
-            $fatal(1, "Experimental EDID must prefer 720p60 +H/+V");
+            $fatal(1, "EDID must prefer 720p60 +H/+V");
         if ({data[72], data[73], data[74], data[75]} !== 32'h00000010 ||
             data[126] !== 0) $fatal(1, "Fallback DTD/extension remains");
         edid_done = 1;
