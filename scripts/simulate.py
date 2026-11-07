@@ -58,7 +58,7 @@ def main():
         # Retain caller licensing settings, but drop an unrelated compiler search path.
         env.pop("LIBRARY_PATH", None)
         if args.elaborate:
-            files = sorted(RTL.glob("*.sv"))
+            files = [*CORE, RTL / "tmds_passthrough.sv", RTL / "mimas_hdmi_top.sv"]
             top = "mimas_hdmi_top"
         elif args.vendor:
             files = [*CORE, RTL / "tmds_passthrough.sv", RTL / "mimas_hdmi_top.sv",

@@ -76,3 +76,9 @@ signal quality and GPU/monitor
 compatibility still require a physical test; building does not program the board.
 
 [Hardware notes](docs/hardware.md) cover the pinout, passthrough, and power setup.
+
+The separate [decoded 720p checkpoint](docs/pixel-checkpoint.md) receives and
+re-encodes unchanged live pixels as the foundation for filtering. Build it with
+`make filter-build`; it has its own project/artifact and does not replace the
+default serial-passthrough build. The tested 720p recovery image is saved at
+`build/recovery/720p-working/mimas_hdmi_top.bit`.

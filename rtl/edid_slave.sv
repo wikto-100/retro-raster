@@ -2,7 +2,9 @@
 
 // Read-only E-DDC base block at 7-bit I2C address 0x50. No extensions.
 // Supports offset writes, repeated START, sequential reads, ACK and NACK.
-module edid_slave (
+module edid_slave #(
+    parameter bit ONLY_720P = 0
+) (
     input  wire clk, // 100 MHz; DDC up to 100 kHz
     input  wire rst,
     input  wire scl,
@@ -13,7 +15,7 @@ module edid_slave (
     // Only VGA 60 is set in established timings; all standard timings are unused.
     // DTDs: 74.25 MHz 1650x750 +H/+V, then 25.18 MHz 800x525 -H/-V.
     // Byte 127 is the checksum. No CTA block: DVI-compatible RGB video only.
-    localparam [1023:0] EDID = {
+    localparam [1023:0] DEFAULT_EDID = {
         128'h00ffffffffffff004a92010000000000,
         128'h00240103800000780eee91a3544c9926,
         128'h0f505420000001010101010101010101,
@@ -23,6 +25,19 @@ module edid_slave (
         128'h6574726f5261737465720a20000000fd,
         128'h003b3d1f2d08000a2020202020200003
     };
+    // The decoded-video experiment has a fixed 720p receiver clock range.
+    // It must not offer the VGA mode supported by the separate serial bypass.
+    localparam [1023:0] EDID_720P = {
+        128'h00ffffffffffff004a92020000000000,
+        128'h00240103800000780eee91a3544c9926,
+        128'h0f505400000001010101010101010101,
+        128'h010101010101011d007251d01e206e28,
+        128'h550000000000001e0000001000000000,
+        128'h00000000000000000000000000fc0052,
+        128'h6574726f5261737465720a20000000fd,
+        128'h003c3c2d2d08000a202020202020006a
+    };
+    localparam [1023:0] EDID = ONLY_720P ? EDID_720P : DEFAULT_EDID;
     function automatic [7:0] edid_byte(input [7:0] address);
         edid_byte = address[7] ? 8'hff : EDID[1023 - 8*address[6:0] -: 8];
     endfunction

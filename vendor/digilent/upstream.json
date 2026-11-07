@@ -1,0 +1,111 @@
+{
+  "repository": "https://github.com/Digilent/vivado-library",
+  "revision": "0362ce72d39eebc400fdabacff706ee7fa8ad564",
+  "files": [
+    {
+      "path": "dvi2rgb/ChannelBond.vhd",
+      "upstream_path": "ip/dvi2rgb/src/ChannelBond.vhd",
+      "upstream_git_blob": "091545bdf0045f7f9cccc5152fa8eec163c6150f"
+    },
+    {
+      "path": "common/DVI_Constants.vhd",
+      "upstream_path": "ip/dvi2rgb/src/DVI_Constants.vhd",
+      "upstream_git_blob": "83a602e5879fc0d5eafa5c82e8f92b52a1cc82fc"
+    },
+    {
+      "path": "dvi2rgb/EEPROM_8b.vhd",
+      "upstream_path": "ip/dvi2rgb/src/EEPROM_8b.vhd",
+      "upstream_git_blob": "53787d57f4920b624428774ed563f1c8e056f02e"
+    },
+    {
+      "path": "dvi2rgb/GlitchFilter.vhd",
+      "upstream_path": "ip/dvi2rgb/src/GlitchFilter.vhd",
+      "upstream_git_blob": "ea09a9db0c0425e59c5d9af79fa2d2e98d7ab059"
+    },
+    {
+      "path": "dvi2rgb/InputSERDES.vhd",
+      "upstream_path": "ip/dvi2rgb/src/InputSERDES.vhd",
+      "upstream_git_blob": "8d693e480fa5e4eeab1cc54461bc1709559c4dd9"
+    },
+    {
+      "path": "dvi2rgb/PhaseAlign.vhd",
+      "upstream_path": "ip/dvi2rgb/src/PhaseAlign.vhd",
+      "upstream_git_blob": "085fac44eecbffdd0bf074ac76ba341b7e7cdaa6"
+    },
+    {
+      "path": "dvi2rgb/ResyncToBUFG.vhd",
+      "upstream_path": "ip/dvi2rgb/src/ResyncToBUFG.vhd",
+      "upstream_git_blob": "60006a9bb900915887d86c2c2737b7320ac98c21"
+    },
+    {
+      "path": "common/SyncAsync.vhd",
+      "upstream_path": "ip/dvi2rgb/src/SyncAsync.vhd",
+      "upstream_git_blob": "f1d7d1332c8e1baf0033e5238f5e91ad6b6eca41"
+    },
+    {
+      "path": "common/SyncAsyncReset.vhd",
+      "upstream_path": "ip/dvi2rgb/src/SyncAsyncReset.vhd",
+      "upstream_git_blob": "4047c516a8af2efce5b428d386f5b1b290a64bba"
+    },
+    {
+      "path": "dvi2rgb/SyncBase.vhd",
+      "upstream_path": "ip/dvi2rgb/src/SyncBase.vhd",
+      "upstream_git_blob": "d185810ff26125005477bcbda46ae38540875707"
+    },
+    {
+      "path": "dvi2rgb/TMDS_Clocking.vhd",
+      "upstream_path": "ip/dvi2rgb/src/TMDS_Clocking.vhd",
+      "upstream_git_blob": "66a8541f098602cd3383a0d20b9cc6880a1ef2ef"
+    },
+    {
+      "path": "dvi2rgb/TMDS_Decoder.vhd",
+      "upstream_path": "ip/dvi2rgb/src/TMDS_Decoder.vhd",
+      "upstream_git_blob": "47f50b3f1697974b4f3c788da5fdf9097e868064"
+    },
+    {
+      "path": "dvi2rgb/TWI_SlaveCtl.vhd",
+      "upstream_path": "ip/dvi2rgb/src/TWI_SlaveCtl.vhd",
+      "upstream_git_blob": "1d6490368613ea867647d43c6bdd8939bdd72ef5"
+    },
+    {
+      "path": "dvi2rgb/dvi2rgb.vhd",
+      "upstream_path": "ip/dvi2rgb/src/dvi2rgb.vhd",
+      "upstream_git_blob": "756e45b7b70b07b40231e4fe8162bc067bfc5174"
+    },
+    {
+      "path": "dvi2rgb/dvi2rgb.xdc",
+      "upstream_path": "ip/dvi2rgb/src/dvi2rgb.xdc",
+      "upstream_git_blob": "ea53af44685ecd58296c4ec8f524e5376b9d03b1"
+    },
+    {
+      "path": "rgb2dvi/ClockGen.vhd",
+      "upstream_path": "ip/rgb2dvi/src/ClockGen.vhd",
+      "upstream_git_blob": "c907930e021ae3978009d68b3e0631e7e24ac7c4"
+    },
+    {
+      "path": "rgb2dvi/OutputSERDES.vhd",
+      "upstream_path": "ip/rgb2dvi/src/OutputSERDES.vhd",
+      "upstream_git_blob": "5f3b247f3a329943a1940fe373eacb2d290b10cc"
+    },
+    {
+      "path": "rgb2dvi/TMDS_Encoder.vhd",
+      "upstream_path": "ip/rgb2dvi/src/TMDS_Encoder.vhd",
+      "upstream_git_blob": "75edeef0facbe077d09c515c435f1331f64e0303"
+    },
+    {
+      "path": "rgb2dvi/rgb2dvi.vhd",
+      "upstream_path": "ip/rgb2dvi/src/rgb2dvi.vhd",
+      "upstream_git_blob": "7b076080b686c891419465083895a6e1a8383fd9"
+    },
+    {
+      "path": "rgb2dvi/rgb2dvi.xdc",
+      "upstream_path": "ip/rgb2dvi/src/rgb2dvi.xdc",
+      "upstream_git_blob": "5d402efa39f082dc363263c39b753fce11283108"
+    },
+    {
+      "path": "rgb2dvi/rgb2dvi_clocks.xdc",
+      "upstream_path": "ip/rgb2dvi/src/rgb2dvi_clocks.xdc",
+      "upstream_git_blob": "6ca365458a4013cd8e735d171ebc7deb48b86c11"
+    }
+  ]
+}

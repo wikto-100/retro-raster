@@ -1,0 +1,39 @@
+library ieee;
+use ieee.std_logic_1164.all;
+
+-- Fixed 720p receiver. Re-register into the global pixel clock for processing.
+entity hdmi_rx is
+    port (
+        ref_clk, reset : in std_logic;
+        tmds_clk_p, tmds_clk_n : in std_logic;
+        tmds_p, tmds_n : in std_logic_vector(2 downto 0);
+        pixel_clk, serial_clk, locked : out std_logic;
+        rgb : out std_logic_vector(23 downto 0);
+        de, hsync, vsync : out std_logic;
+        debug : out std_logic_vector(15 downto 0)
+    );
+end entity;
+
+architecture rtl of hdmi_rx is
+    signal rbg : std_logic_vector(23 downto 0);
+begin
+    rgb <= rbg(23 downto 16) & rbg(7 downto 0) & rbg(15 downto 8);
+    core : entity work.dvi2rgb
+        generic map (
+            kEmulateDDC => false, kRstActiveHigh => true,
+            kAddBUFG => true, kClkRange => 2, kDebug => false,
+            kIDLY_TapValuePs => 78, kIDLY_TapWidth => 5
+        )
+        port map (
+            TMDS_Clk_p => tmds_clk_p, TMDS_Clk_n => tmds_clk_n,
+            TMDS_Data_p => tmds_p, TMDS_Data_n => tmds_n,
+            RefClk => ref_clk, aRst => reset, aRst_n => '1',
+            vid_pData => rbg, vid_pVDE => de,
+            vid_pHSync => hsync, vid_pVSync => vsync,
+            PixelClk => pixel_clk, SerialClk => serial_clk,
+            pLocked => locked, aPixelClkLckd => open, rrDebug => debug,
+            SDA_I => '1', SDA_O => open, SDA_T => open,
+            SCL_I => '1', SCL_O => open, SCL_T => open,
+            pRst => '0', pRst_n => '1'
+        );
+end architecture;
