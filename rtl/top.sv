@@ -1,10 +1,11 @@
 `default_nettype none
 
-// Top level: everything the FPGA does, wired together.
+// Top level: everything the FPGA does
 //
-// The GPU sends HDMI video to HDMI IN. The receiver turns it back into
-// pixels. The filter chain changes the pixels. The transmitter turns them
-// into HDMI again and sends them to the monitor on HDMI OUT.
+// The GPU sends HDMI video to HDMI IN. 
+// The receiver turns it back into pixels.
+// The filter chain changes the pixels.
+// The transmitter turns them into HDMI again and sends them to the monitor on HDMI OUT.
 module top #(
     // 100 ms at 100 MHz: how long the monitor must be connected before we
     // tell the GPU that a display is present.
@@ -30,11 +31,22 @@ module top #(
     output wire [2:0] hdmi_tx_p, hdmi_tx_n,
     inout wire hdmi_tx_cec, hdmi_tx_rscl, hdmi_tx_rsda // unused
 );
-    // Make a 200 MHz clock from the 100 MHz oscillator. The receiver needs it
-    // to fine-tune when it samples the incoming HDMI bits. An MMCM is a clock
-    // generator inside the FPGA: 100 MHz x 10 / 5 = 200 MHz. ref_locked goes
-    // high once its output is stable. BUFG puts a clock on the chip-wide
-    // clock network.
+    // Reference clock: make 200 MHz from the board's 100 MHz.
+    //
+    // Why: HDMI bits arrive very fast (742.5 million per second per lane).
+    // To read each bit correctly, the receiver delays each input pin by a
+    // small adjustable amount so it reads in the middle of the bit, not at
+    // its edge. Those delay blocks need a 200 MHz clock to keep their delay
+    // steps accurate. Nothing else uses this clock.
+    //
+    // How: an MMCM is a clock generator built into the FPGA. It multiplies
+    // the input clock and then divides it: 100 MHz x 10 = 1000 MHz, / 5 =
+    // 200 MHz (CLKFBOUT_MULT_F and CLKOUT0_DIVIDE_F below). The "feedback"
+    // wires loop its output back to its input so it can keep the output in
+    // step. ref_locked turns 1 once the output is stable.
+    //
+    // BUFG: a clock buffer. It sends a clock over the dedicated clock wiring
+    // that reaches the whole chip with almost no delay.
     wire feedback, feedback_buf, ref_raw, ref_clk, ref_locked;
     MMCME2_BASE #(
         .CLKIN1_PERIOD(10.0), .DIVCLK_DIVIDE(1), .CLKFBOUT_MULT_F(10.0),
