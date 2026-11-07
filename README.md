@@ -72,3 +72,8 @@ slots `dp2_filter.sv` to `dp7_filter.sv`.
 - Power: 12 V, P2 on pins 2-3.
 - Output is DVI only.
 - `vendor/digilent/`: Digilent dvi2rgb and rgb2dvi, BSD-3-Clause.
+
+## License
+
+MIT, see `LICENSE`. Files in `vendor/digilent/` are BSD-3-Clause, see
+`vendor/digilent/LICENSE`.
