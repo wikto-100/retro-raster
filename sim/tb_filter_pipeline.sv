@@ -24,8 +24,8 @@ module tb_filter_pipeline #(
     tri1 sda;
     assign sda = master_sda_low ? 1'b0 : 1'bz;
     tri rx_cec, tx_cec, tx_scl, tx_sda;
-    mimas_filter_top #(.HPD_DELAY_CYCLES(16)) dut (
-        .CLK1(clk), .RESET(rst),
+    mimas_filter_top #(.HPD_DELAY_CYCLES(16), .TX_HOLD_CYCLES(16)) dut (
+        .CLK1(clk), .RESET(rst), .dip_sw0(1'b0),
         .hdmi_rx_clk_p(rx_clk), .hdmi_rx_clk_n(~rx_clk),
         .hdmi_rx_p(rx_data), .hdmi_rx_n(~rx_data),
         .hdmi_rx_hpa(hpa), .hdmi_rx_scl(scl), .hdmi_rx_sda(sda), .hdmi_rx_cec(rx_cec),

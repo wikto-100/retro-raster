@@ -24,6 +24,7 @@ set filter_vhdl_relative {
 set filter_sv_relative {
     rtl/edid_slave.sv
     rtl/video_register.sv
+    rtl/square_overlay.sv
     rtl/hdmi_debug.sv
     rtl/video_probe.sv
     rtl/mimas_filter_top.sv

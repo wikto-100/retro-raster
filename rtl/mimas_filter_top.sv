@@ -1,10 +1,16 @@
 `default_nettype none
 
-// Checkpoint 1: decode, register unchanged RGB/timing, re-encode. No filter yet.
+// Decode, register RGB/timing, overlay a green square while DIP switch DP0 is
+// on, re-encode.
 module mimas_filter_top #(
-    parameter integer HPD_DELAY_CYCLES = 10000000
+    parameter integer HPD_DELAY_CYCLES = 10000000,
+    // HDMI OUT stays idle until the input has been locked this long (pixel
+    // clocks, 500 ms at 720p), so the monitor sees one clean start instead of
+    // the flapping input while the GPU re-detects the display after programming.
+    parameter integer TX_HOLD_CYCLES = 37125000
 ) (
     input wire CLK1, RESET,
+    input wire dip_sw0,
     input wire hdmi_rx_clk_p, hdmi_rx_clk_n,
     input wire [2:0] hdmi_rx_p, hdmi_rx_n,
     output wire hdmi_rx_hpa,
@@ -73,8 +79,9 @@ module mimas_filter_top #(
 
     wire pixel_clk, serial_clk, pixel_locked;
     wire [15:0] rx_debug;
-    wire [23:0] rx_rgb, tx_rgb;
-    wire rx_de, rx_hsync, rx_vsync, tx_de, tx_hsync, tx_vsync;
+    wire [23:0] rx_rgb, reg_rgb, tx_rgb;
+    wire rx_de, rx_hsync, rx_vsync, reg_de, reg_hsync, reg_vsync;
+    wire tx_de, tx_hsync, tx_vsync;
     wire core_reset = reference_reset || !connected;
     hdmi_rx receiver (
         .ref_clk(ref_clk), .reset(core_reset),
@@ -92,10 +99,39 @@ module mimas_filter_top #(
     video_register pixels (
         .pixel_clk(pixel_clk), .reset(video_reset_sync[1]),
         .rgb_in(rx_rgb), .de_in(rx_de), .hsync_in(rx_hsync), .vsync_in(rx_vsync),
+        .rgb_out(reg_rgb), .de_out(reg_de), .hsync_out(reg_hsync), .vsync_out(reg_vsync)
+    );
+    square_overlay overlay (
+        .pixel_clk(pixel_clk), .reset(video_reset_sync[1]), .enable(!dip_sw0), // DP0 reads low when ON
+        .rgb_in(reg_rgb), .de_in(reg_de), .hsync_in(reg_hsync), .vsync_in(reg_vsync),
         .rgb_out(tx_rgb), .de_out(tx_de), .hsync_out(tx_hsync), .vsync_out(tx_vsync)
     );
+    // Same domain as the TX input clock; lock loss resets it asynchronously,
+    // so any input interruption restarts the hold-off.
+    localparam integer HOLD_WIDTH = (TX_HOLD_CYCLES < 2) ? 1 : $clog2(TX_HOLD_CYCLES);
+    reg [HOLD_WIDTH-1:0] tx_hold_count = 0;
+    reg tx_enable = 0;
+    always @(posedge pixel_clk or posedge video_reset_sync[1]) begin
+        if (video_reset_sync[1]) begin
+            tx_hold_count <= 0;
+            tx_enable <= 0;
+        end else if (!tx_enable) begin
+            if (tx_hold_count == TX_HOLD_CYCLES - 1) tx_enable <= 1;
+            else tx_hold_count <= tx_hold_count + 1'b1;
+        end
+    end
+    // Read-only diagnostic: video starts since configuration (1 = one clean
+    // start). Deliberately never reset, not even by S3.
+    reg video_running = 0;
+    reg [6:0] video_starts = 0;
+    always @(posedge pixel_clk) begin
+        video_running <= !video_reset_sync[1];
+        if (!video_reset_sync[1] && !video_running && video_starts != 7'h7f)
+            video_starts <= video_starts + 1'b1;
+    end
+    wire tx_reset = video_reset_async || !tx_enable;
     hdmi_tx transmitter (
-        .pixel_clk(pixel_clk), .serial_clk(serial_clk), .reset(video_reset_async),
+        .pixel_clk(pixel_clk), .serial_clk(serial_clk), .reset(tx_reset),
         .rgb(tx_rgb), .de(tx_de), .hsync(tx_hsync), .vsync(tx_vsync),
         .tmds_clk_p(hdmi_tx_clk_p), .tmds_clk_n(hdmi_tx_clk_n),
         .tmds_p(hdmi_tx_p), .tmds_n(hdmi_tx_n)
@@ -125,7 +161,10 @@ module mimas_filter_top #(
         .clk(pixel_clk), .reset(video_reset_sync[1]), .de(rx_de),
         .hsync(rx_hsync), .vsync(rx_vsync), .status(video_status)
     );
-    hdmi_debug #(.WIDTH(128), .CHAIN(2)) diagnostics_video (.status(video_status));
+    // The probe's magic word ends in 8'h00; that byte carries TX/lock state.
+    hdmi_debug #(.WIDTH(128), .CHAIN(2)) diagnostics_video (
+        .status({video_status[127:104], tx_enable, video_starts, video_status[95:0]})
+    );
 endmodule
 
 `default_nettype wire

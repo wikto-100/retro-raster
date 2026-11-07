@@ -3,7 +3,8 @@
 This separate design receives the GPU's live 1280x720 60 Hz RGB video,
 decodes TMDS to canonical 24-bit RGB plus DE/HSYNC/VSYNC, registers those
 signals together for one pixel-clock cycle and re-encodes them for HDMI OUT.
-It has no filter or switch effect yet. The receiver re-registers video into a
+A first switch-controlled effect paints a 64x64 green square in the top-left
+corner while DIP switch DP0 (pin B21) is on (see below). The receiver re-registers video into a
 global 74.25 MHz pixel clock. A dedicated transmitter PLL derives its own
 74.25 MHz pixel and 371.25 MHz serializer clocks from that recovered clock.
 The 100 MHz board oscillator generates the independent 200 MHz calibration
@@ -40,7 +41,19 @@ and has no VGA fallback or extension blocks. Select actual 1280x720, 60 Hz,
 8-bit RGB output from the GPU. The FPGA does not scale a higher-resolution
 input. KDE may treat this EDID as a new display and need mirroring enabled.
 
-## Startup and reset
+## DIP switch square
+
+`rtl/square_overlay.sv` sits after the pixel register and adds one more
+pixel-clock stage to RGB and timing alike. It counts active pixels/lines from
+DE and VSYNC and replaces pixels with x < 64 and y < 64 by pure green while
+enabled. DP0 is synchronized into the pixel clock with a two-flop chain and
+only sampled on each VSYNC rising edge, so the square switches on whole frames
+without tearing. Other pixels, blanking and syncs pass through unchanged.
+
+DP0 reads low in its ON position on this board, so the top level passes
+`!dip_sw0` as `enable` (confirmed on hardware 2026-11-07).
+
+
 
 Upstream HPD is asserted after monitor presence and local reference readiness
 are synchronized and stable for 100 ms. It does not depend on incoming clock
@@ -50,14 +63,26 @@ bridges assert asynchronously and release on their destination clocks. The
 pixel stage masks active video until the first positive VSYNC after recovery.
 Losing the input clock may cause the monitor to lose signal while reacquiring.
 
+HDMI OUT is held in reset until the receiver has been locked continuously for
+500 ms (`TX_HOLD_CYCLES`, counted on the received pixel clock, so no new
+clock crossing); any lock loss resets that domain and restarts the wait.
+Before this, a freshly programmed board often left the AORUS on its DP input
+until S3 was pressed. Programming blanks the link for about 18 s, so the GPU
+re-detects the display and its output can start and stop while the transmitter
+was already following it. S3 always recovered. The hold-off makes the monitor
+see one clean start. `hdmi_status.py` reports `tx_enabled` and
+`video_starts_since_config` (never reset, saturating at 127; 1 means one clean
+start) to confirm.
+
 S3 resets the complete experiment. Monitor disconnect drops upstream HPD and
-releases DDC after input synchronization. Changing filters is not involved in
-this checkpoint.
+releases DDC after input synchronization. Toggling DP0 never resets anything;
+it only changes the overlay from the next frame.
 
 ## Verification
 
 `python3 scripts/simulate_filter.py --unit` checks the 720p-only EDID/checksum,
-pixel/color/timing registration, blanking, startup mid-frame and asynchronous
+pixel/color/timing registration, blanking, the square's
+position/size and per-frame switch latching, startup mid-frame and asynchronous
 reset. The existing `make sim` verifies the original EDID/DDC behavior too.
 
 The default XSim transmitter regression generates changing pixel patterns and

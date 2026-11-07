@@ -13,7 +13,7 @@ module tb_filter_unit;
         .clk(clk), .rst(rst), .scl(scl), .sda(sda), .sda_low(sda_low)
     );
     `include "ddc_tasks.svh"
-    reg edid_done = 0, pixels_done = 0;
+    reg edid_done = 0, pixels_done = 0, overlay_done = 0;
     reg [7:0] data [0:127];
     integer n, sum;
     initial begin
@@ -82,8 +82,59 @@ module tb_filter_unit;
         tick(24'habcdef, 1, 0, 0, 1);
         pixels_done = 1;
     end
+
+    // Square overlay: 8x6 active raster, 4x4 square, switch latched per frame.
+    reg ov_reset = 1, ov_enable = 0;
+    reg [23:0] ov_rgb = 0;
+    reg ov_de = 0, ov_hs = 0, ov_vs = 0;
+    wire [23:0] ov_out_rgb;
+    wire ov_out_de, ov_out_hs, ov_out_vs;
+    square_overlay #(.SIZE(4)) overlay (
+        .pixel_clk(clk), .reset(ov_reset), .enable(ov_enable),
+        .rgb_in(ov_rgb), .de_in(ov_de), .hsync_in(ov_hs), .vsync_in(ov_vs),
+        .rgb_out(ov_out_rgb), .de_out(ov_out_de), .hsync_out(ov_out_hs), .vsync_out(ov_out_vs)
+    );
+    task automatic ov_tick(input [23:0] color, input active, h, v, input [23:0] expect_rgb);
+        begin
+            @(negedge clk);
+            {ov_rgb, ov_de, ov_hs, ov_vs} = {color, active, h, v};
+            @(posedge clk); #1;
+            if ({ov_out_rgb, ov_out_de, ov_out_hs, ov_out_vs} !== {expect_rgb, active, h, v})
+                $fatal(1, "Square overlay mismatch: got %h expected %h", ov_out_rgb, expect_rgb);
+        end
+    endtask
+    task automatic ov_frame(input show);
+        integer row, col;
+        reg [23:0] color;
+        begin
+            ov_tick(0, 0, 0, 1, 0);
+            ov_tick(0, 0, 0, 0, 0);
+            for (row = 0; row < 6; row = row + 1) begin
+                for (col = 0; col < 8; col = col + 1) begin
+                    color = 24'h102030 + row * 16 + col;
+                    ov_tick(color, 1, 0, 0,
+                            (show && row < 4 && col < 4) ? 24'h00ff00 : color);
+                end
+                ov_tick(24'hffffff, 0, 1, 0, 0);
+                ov_tick(24'hffffff, 0, 0, 0, 0);
+            end
+        end
+    endtask
     initial begin
-        wait (edid_done && pixels_done);
+        repeat (5) @(negedge clk);
+        ov_reset = 0;
+        ov_frame(0);
+        ov_enable = 1;          // switched mid-frame: takes effect next frame
+        ov_frame(0);
+        ov_frame(1);
+        ov_frame(1);
+        ov_enable = 0;
+        ov_frame(1);
+        ov_frame(0);
+        overlay_done = 1;
+    end
+    initial begin
+        wait (edid_done && pixels_done && overlay_done);
         $display("FPGA_VIDEO_PASS filter-unit");
         $finish;
     end

@@ -35,7 +35,9 @@ print(f"receiver_mmcm_reset: {(debug >> 6) & 1}")
 video_match = re.search(r"VIDEO_STATUS:([0-9a-fA-F]+)", result.stdout)
 if video_match:
     video = int(video_match[1], 16)
-    if video >> 96 == 0x720a7d00:
+    if video >> 104 == 0x720a7d:
+        print(f"tx_enabled: {(video >> 103) & 1}")
+        print(f"video_starts_since_config: {(video >> 96) & 0x7f}")
         print(f"frame_pixel_clocks: {(video >> 64) & 0xffffffff}")
         print(f"active_pixels: {(video >> 42) & 0x3fffff}")
         print(f"active_rows: {(video >> 32) & 0x3ff}")

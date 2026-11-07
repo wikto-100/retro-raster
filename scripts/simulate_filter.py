@@ -31,6 +31,7 @@ def main():
     env = os.environ.copy()
     env.pop("LIBRARY_PATH", None)
     unit_files = [ROOT / "rtl/edid_slave.sv", ROOT / "rtl/video_register.sv",
+                  ROOT / "rtl/square_overlay.sv",
                   ROOT / "sim/tb_filter_unit.sv"]
     install = Path(env.get("VIVADO_ROOT", "/opt/Xilinx/2026.1/Vivado")).resolve()
     bindir = install / "bin"
