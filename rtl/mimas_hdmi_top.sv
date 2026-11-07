@@ -1,8 +1,18 @@
 `default_nettype none
 
-module mimas_hdmi_top (
+module mimas_hdmi_top #(
+    parameter integer HPD_DELAY_CYCLES = 10000000 // 100 ms at 100 MHz
+) (
     input  wire       CLK1,
     input  wire       RESET,
+    input  wire       hdmi_rx_clk_p,
+    input  wire       hdmi_rx_clk_n,
+    input  wire [2:0] hdmi_rx_p,
+    input  wire [2:0] hdmi_rx_n,
+    output wire       hdmi_rx_hpa,
+    input  wire       hdmi_rx_scl,
+    inout  wire       hdmi_rx_sda,
+    inout  wire       hdmi_rx_cec,
     input  wire       hdmi_tx_hpd,
     output wire       hdmi_tx_clk_p,
     output wire       hdmi_tx_clk_n,
@@ -12,62 +22,54 @@ module mimas_hdmi_top (
     inout  wire       hdmi_tx_rscl,
     inout  wire       hdmi_tx_rsda
 );
-    wire pixel_clk;
-    wire serial_clk;
-    wire locked;
-    wire pixel_rst;
-    (* ASYNC_REG = "TRUE" *) reg [1:0] reset_sync = 2'b11;
-    (* ASYNC_REG = "TRUE" *) reg hpd_meta = 0;
-    (* ASYNC_REG = "TRUE" *) reg hpd_sync = 0;
-    wire [9:0] blue_symbol;
-    wire [9:0] green_symbol;
-    wire [9:0] red_symbol;
+    wire [3:0] incoming_p = {hdmi_rx_clk_p, hdmi_rx_p};
+    wire [3:0] incoming_n = {hdmi_rx_clk_n, hdmi_rx_n};
+    wire [3:0] outgoing_p;
+    wire [3:0] outgoing_n;
+    assign {hdmi_tx_clk_p, hdmi_tx_p} = outgoing_p;
+    assign {hdmi_tx_clk_n, hdmi_tx_n} = outgoing_n;
 
-    video_clocks clocks (
-        .clk_100mhz(CLK1), .rst(RESET), .pixel_clk(pixel_clk),
-        .serial_clk(serial_clk), .locked(locked)
+    wire forwarding_ready;
+    tmds_passthrough forwarding (
+        .clk_100mhz(CLK1), .rst(RESET), .in_p(incoming_p), .in_n(incoming_n),
+        .out_p(outgoing_p), .out_n(outgoing_n), .ready(forwarding_ready)
     );
-    // Asynchronous assertion on loss of lock, synchronous release in CLKDIV domain.
-    always @(posedge pixel_clk or negedge locked) begin
-        if (!locked) reset_sync <= 2'b11;
-        else reset_sync <= {reset_sync[0], 1'b0};
-    end
-    assign pixel_rst = reset_sync[1];
-    always @(posedge pixel_clk) begin
-        if (pixel_rst) begin
-            hpd_meta <= 0;
+
+    // Advertise the fixed low-resolution display only while a monitor is present.
+    (* ASYNC_REG = "TRUE" *) reg [1:0] hpd_sync = 0;
+    (* ASYNC_REG = "TRUE" *) reg [1:0] ready_sync = 0;
+    localparam integer COUNT_WIDTH = (HPD_DELAY_CYCLES < 2) ? 1 : $clog2(HPD_DELAY_CYCLES);
+    reg [COUNT_WIDTH-1:0] hpd_count = 0;
+    reg connected = 0;
+    always @(posedge CLK1) begin
+        if (RESET) begin
             hpd_sync <= 0;
+            ready_sync <= 0;
         end else begin
-            hpd_meta <= hdmi_tx_hpd;
-            hpd_sync <= hpd_meta;
+            hpd_sync <= {hpd_sync[0], hdmi_tx_hpd};
+            ready_sync <= {ready_sync[0], forwarding_ready};
+        end
+        if (RESET || !hpd_sync[1] || !ready_sync[1]) begin
+            hpd_count <= 0;
+            connected <= 0;
+        end else if (!connected) begin
+            if (hpd_count == HPD_DELAY_CYCLES - 1) connected <= 1;
+            else hpd_count <= hpd_count + 1'b1;
         end
     end
+    assign hdmi_rx_hpa = connected && !RESET;
 
-    video_source source (
-        .clk(pixel_clk), .rst(pixel_rst || !hpd_sync),
-        .x(), .y(), .active(), .hsync(), .vsync(), .red(), .green(), .blue(),
-        .tmds_blue(blue_symbol), .tmds_green(green_symbol), .tmds_red(red_symbol)
+    wire sda_low;
+    edid_slave edid (
+        .clk(CLK1), .rst(RESET || !connected),
+        .scl(hdmi_rx_scl), .sda(hdmi_rx_sda), .sda_low(sda_low)
     );
-    tmds_serializer blue_lane (
-        .pixel_clk(pixel_clk), .serial_clk(serial_clk), .rst(pixel_rst),
-        .symbol(blue_symbol), .out_p(hdmi_tx_p[0]), .out_n(hdmi_tx_n[0])
-    );
-    tmds_serializer green_lane (
-        .pixel_clk(pixel_clk), .serial_clk(serial_clk), .rst(pixel_rst),
-        .symbol(green_symbol), .out_p(hdmi_tx_p[1]), .out_n(hdmi_tx_n[1])
-    );
-    tmds_serializer red_lane (
-        .pixel_clk(pixel_clk), .serial_clk(serial_clk), .rst(pixel_rst),
-        .symbol(red_symbol), .out_p(hdmi_tx_p[2]), .out_n(hdmi_tx_n[2])
-    );
-    tmds_serializer clock_lane (
-        .pixel_clk(pixel_clk), .serial_clk(serial_clk), .rst(pixel_rst),
-        .symbol(10'b1111100000), .out_p(hdmi_tx_clk_p), .out_n(hdmi_tx_clk_n)
-    );
+    assign hdmi_rx_sda = sda_low ? 1'b0 : 1'bz;
 
-    // Fixed known video mode: no DDC transaction or CEC traffic in milestone 1.
+    // The GPU reads our 720p/VGA EDID, not the monitor's native high-res modes.
     assign hdmi_tx_rscl = 1'bz;
     assign hdmi_tx_rsda = 1'bz;
+    assign hdmi_rx_cec = 1'bz;
     assign hdmi_tx_cec = 1'bz;
 endmodule
 

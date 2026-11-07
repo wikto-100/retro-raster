@@ -30,6 +30,8 @@ if {[catch {
             error "$delay timing failed; see build/reports/timing.rpt"
         }
     }
+    source [file join $repo_root scripts check_passthrough.tcl]
+    check_passthrough [file join $reports passthrough.rpt]
     write_checkpoint -force [file join $artifacts mimas_hdmi_top_routed.dcp]
     write_bitstream -force [file join $artifacts mimas_hdmi_top.bit]
     puts "Bitstream ready: [file join $artifacts mimas_hdmi_top.bit]"

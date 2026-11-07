@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Explicitly load the project's bitstream into volatile FPGA SRAM via OpenOCD."""
+import argparse
 import os
 from pathlib import Path
 import shutil
@@ -7,9 +8,13 @@ import subprocess
 import sys
 
 root = Path(__file__).resolve().parents[1]
-bitstream = root / "build/artifacts/mimas_hdmi_top.bit"
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--bitstream", default="build/artifacts/mimas_hdmi_top.bit",
+                    help="Bitstream path, relative to the repository or absolute")
+args = parser.parse_args()
+bitstream = (root / args.bitstream).resolve()
 if not bitstream.is_file():
-    sys.exit("No bitstream found. Run make build first.")
+    sys.exit(f"No bitstream found at {bitstream}. Run make build first.")
 programmer = shutil.which("openocd")
 if not programmer:
     sys.exit("OpenOCD is not on PATH.")

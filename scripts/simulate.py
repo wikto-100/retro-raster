@@ -9,7 +9,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 RTL = ROOT / "rtl"
-CORE = [RTL / f for f in ("video_timing.sv", "moving_pattern.sv", "tmds_encoder.sv", "video_source.sv")]
+CORE = [RTL / "edid_slave.sv"]
 
 
 def run(command, cwd, env):
@@ -38,7 +38,7 @@ def main():
         simulator = "iverilog" if not vendor and shutil.which("iverilog") and shutil.which("vvp") else "xsim"
     if vendor and simulator == "iverilog":
         raise RuntimeError("AMD primitive checks require XSim")
-    kind = "design" if args.elaborate else "serializer" if args.vendor else "core"
+    kind = "design" if args.elaborate else "passthrough" if args.vendor else "core"
     cwd = ROOT / "build" / "sim" / f"{kind}-{simulator}"
     cwd.mkdir(parents=True, exist_ok=True)
     (cwd / "runner.log").write_text("")
@@ -46,7 +46,7 @@ def main():
     if simulator == "iverilog":
         if not shutil.which("iverilog") or not shutil.which("vvp"):
             raise RuntimeError("iverilog and vvp must both be on PATH")
-        run(["iverilog", "-g2012", "-Wall", "-s", "tb_core", "-o", "core.vvp",
+        run(["iverilog", "-g2012", "-Wall", "-I", ROOT / "sim", "-s", "tb_core", "-o", "core.vvp",
              *CORE, ROOT / "sim/tb_core.sv"], cwd, env)
         output = run(["vvp", "core.vvp"], cwd, env)
     else:
@@ -61,12 +61,13 @@ def main():
             files = sorted(RTL.glob("*.sv"))
             top = "mimas_hdmi_top"
         elif args.vendor:
-            files = [RTL / "tmds_serializer.sv", ROOT / "sim/tb_serializer.sv"]
-            top = "tb_serializer"
+            files = [*CORE, RTL / "tmds_passthrough.sv", RTL / "mimas_hdmi_top.sv",
+                     ROOT / "sim/tb_passthrough.sv"]
+            top = "tb_passthrough"
         else:
             files = CORE + [ROOT / "sim/tb_core.sv"]
             top = "tb_core"
-        run([bindir / "xvlog", "--sv", *files], cwd, env)
+        run([bindir / "xvlog", "--sv", "-i", ROOT / "sim", *files], cwd, env)
         elaborate = [bindir / "xelab", f"work.{top}", "-s", "snapshot", "-mt", "off"]
         if vendor:
             run([bindir / "xvlog", install / "data/verilog/src/glbl.v"], cwd, env)

@@ -7,7 +7,7 @@
       "group": { "kind": "test", "isDefault": true }, "problemMatcher": []
     },
     {
-      "label": "FPGA: simulate serializers", "type": "process", "command": "make",
+      "label": "FPGA: simulate HDMI passthrough", "type": "process", "command": "make",
       "args": ["sim-vendor"], "options": { "cwd": "${workspaceFolder}" }, "problemMatcher": []
     },
     {
