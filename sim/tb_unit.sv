@@ -13,7 +13,7 @@ module tb_unit;
         .clk(clk), .rst(rst), .scl(scl), .sda(sda), .sda_low(sda_low)
     );
     `include "ddc_tasks.svh"
-    reg edid_done = 0, pixels_done = 0, overlay_done = 0;
+    reg edid_done = 0, pixels_done = 0, filter_done = 0;
     reg [7:0] data [0:127];
     integer n, sum;
     initial begin
@@ -83,58 +83,68 @@ module tb_unit;
         pixels_done = 1;
     end
 
-    // Square overlay: 8x6 active raster, 4x4 square, switch latched per frame.
+    // Grayscale filter: 8x3 active raster, switch latched per frame.
     reg ov_reset = 1, ov_enable = 0;
     reg [23:0] ov_rgb = 0;
     reg ov_de = 0, ov_hs = 0, ov_vs = 0;
     wire [23:0] ov_out_rgb;
     wire ov_out_de, ov_out_hs, ov_out_vs;
-    square_overlay #(.SIZE(4)) overlay (
+    grayscale_filter filter (
         .pixel_clk(clk), .reset(ov_reset), .enable(ov_enable),
         .rgb_in(ov_rgb), .de_in(ov_de), .hsync_in(ov_hs), .vsync_in(ov_vs),
         .rgb_out(ov_out_rgb), .de_out(ov_out_de), .hsync_out(ov_out_hs), .vsync_out(ov_out_vs)
     );
+    function automatic [23:0] gray_of(input [23:0] c);
+        reg [15:0] l;
+        begin
+            l = 77 * c[23:16] + 150 * c[15:8] + 29 * c[7:0];
+            gray_of = {3{l[15:8]}};
+        end
+    endfunction
     task automatic ov_tick(input [23:0] color, input active, h, v, input [23:0] expect_rgb);
         begin
             @(negedge clk);
             {ov_rgb, ov_de, ov_hs, ov_vs} = {color, active, h, v};
             @(posedge clk); #1;
             if ({ov_out_rgb, ov_out_de, ov_out_hs, ov_out_vs} !== {expect_rgb, active, h, v})
-                $fatal(1, "Square overlay mismatch: got %h expected %h", ov_out_rgb, expect_rgb);
+                $fatal(1, "Grayscale mismatch: in %h got %h expected %h", color, ov_out_rgb, expect_rgb);
         end
     endtask
-    task automatic ov_frame(input show);
+    reg [23:0] colors [0:7];
+    task automatic ov_frame(input gray);
         integer row, col;
-        reg [23:0] color;
         begin
             ov_tick(0, 0, 0, 1, 0);
             ov_tick(0, 0, 0, 0, 0);
-            for (row = 0; row < 6; row = row + 1) begin
-                for (col = 0; col < 8; col = col + 1) begin
-                    color = 24'h102030 + row * 16 + col;
-                    ov_tick(color, 1, 0, 0,
-                            (show && row < 4 && col < 4) ? 24'h00ff00 : color);
-                end
+            for (row = 0; row < 3; row = row + 1) begin
+                for (col = 0; col < 8; col = col + 1)
+                    ov_tick(colors[col] ^ (row * 24'h0b1d29), 1, 0, 0,
+                            gray ? gray_of(colors[col] ^ (row * 24'h0b1d29))
+                                 : colors[col] ^ (row * 24'h0b1d29));
                 ov_tick(24'hffffff, 0, 1, 0, 0);
                 ov_tick(24'hffffff, 0, 0, 0, 0);
             end
         end
     endtask
     initial begin
+        colors[0] = 24'h000000; colors[1] = 24'hffffff; colors[2] = 24'hff0000;
+        colors[3] = 24'h00ff00; colors[4] = 24'h0000ff; colors[5] = 24'h808080;
+        colors[6] = 24'h123456; colors[7] = 24'hfedcba;
+        if (gray_of(24'hffffff) !== 24'hffffff || gray_of(0) !== 0)
+            $fatal(1, "Grayscale must keep black and white");
         repeat (5) @(negedge clk);
         ov_reset = 0;
         ov_frame(0);
         ov_enable = 1;          // switched mid-frame: takes effect next frame
         ov_frame(0);
         ov_frame(1);
-        ov_frame(1);
         ov_enable = 0;
         ov_frame(1);
         ov_frame(0);
-        overlay_done = 1;
+        filter_done = 1;
     end
     initial begin
-        wait (edid_done && pixels_done && overlay_done);
+        wait (edid_done && pixels_done && filter_done);
         $display("FPGA_VIDEO_PASS unit");
         $finish;
     end

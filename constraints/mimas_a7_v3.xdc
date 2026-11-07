@@ -44,7 +44,7 @@ set_property IODELAY_GROUP rx_delay [get_cells -hier -filter {REF_NAME == IDELAY
 
 # Port CDC: asynchronous switches/DDC are sampled by dedicated input chains.
 set_false_path -from [get_ports RESET]
-set_false_path -from [get_ports dip_sw0] -to [get_cells -hier -filter {NAME =~ overlay/enable_sync_reg*}]
+set_false_path -from [get_ports dip_sw0] -to [get_cells -hier -filter {NAME =~ filter/enable_sync_reg*}]
 set_false_path -from [get_ports hdmi_tx_hpd] -to [get_cells -hier -filter {NAME =~ hpd_sync_reg*}]
 set_false_path -from [get_ports {hdmi_rx_scl hdmi_rx_sda}] -to [get_cells -hier -filter {NAME =~ edid/*sync_reg*}]
 set_false_path -to [get_ports {hdmi_rx_sda hdmi_rx_hpa}]

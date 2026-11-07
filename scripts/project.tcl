@@ -32,7 +32,7 @@ set sources {
     rtl/hdmi_tx.vhd
     rtl/edid_slave.sv
     rtl/video_register.sv
-    rtl/square_overlay.sv
+    rtl/grayscale_filter.sv
     rtl/top.sv
 }
 foreach relative $sources {

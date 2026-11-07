@@ -1,6 +1,6 @@
 `default_nettype none
 
-// RetroRaster: decode 720p HDMI, overlay a green square while DIP switch DP0
+// RetroRaster: decode 720p HDMI, convert to grayscale while DIP switch DP0
 // is on, re-encode to HDMI OUT.
 module top #(
     parameter integer HPD_DELAY_CYCLES = 10000000,
@@ -99,7 +99,7 @@ module top #(
         .rgb_in(rx_rgb), .de_in(rx_de), .hsync_in(rx_hsync), .vsync_in(rx_vsync),
         .rgb_out(reg_rgb), .de_out(reg_de), .hsync_out(reg_hsync), .vsync_out(reg_vsync)
     );
-    square_overlay overlay (
+    grayscale_filter filter (
         .pixel_clk(pixel_clk), .reset(video_reset_sync[1]), .enable(!dip_sw0), // DP0 reads low when ON
         .rgb_in(reg_rgb), .de_in(reg_de), .hsync_in(reg_hsync), .vsync_in(reg_vsync),
         .rgb_out(tx_rgb), .de_out(tx_de), .hsync_out(tx_hsync), .vsync_out(tx_vsync)
