@@ -1,7 +1,7 @@
 `timescale 1ns/1ps
 `default_nettype none
 
-module tb_filter_unit;
+module tb_unit;
     reg clk = 0;
     always #5 clk = ~clk;
     reg rst = 1;
@@ -9,7 +9,7 @@ module tb_filter_unit;
     tri1 sda;
     wire sda_low;
     assign sda = (master_sda_low || sda_low) ? 1'b0 : 1'bz;
-    edid_slave #(.ONLY_720P(1)) edid (
+    edid_slave edid (
         .clk(clk), .rst(rst), .scl(scl), .sda(sda), .sda_low(sda_low)
     );
     `include "ddc_tasks.svh"
@@ -135,11 +135,11 @@ module tb_filter_unit;
     end
     initial begin
         wait (edid_done && pixels_done && overlay_done);
-        $display("FPGA_VIDEO_PASS filter-unit");
+        $display("FPGA_VIDEO_PASS unit");
         $finish;
     end
     initial begin
-        #10000000; $fatal(1, "filter-unit timeout");
+        #10000000; $fatal(1, "unit timeout");
     end
 endmodule
 `default_nettype wire

@@ -1,12 +1,11 @@
 `default_nettype none
 
-// Decode, register RGB/timing, overlay a green square while DIP switch DP0 is
-// on, re-encode.
-module mimas_filter_top #(
+// RetroRaster: decode 720p HDMI, overlay a green square while DIP switch DP0
+// is on, re-encode to HDMI OUT.
+module top #(
     parameter integer HPD_DELAY_CYCLES = 10000000,
     // HDMI OUT stays idle until the input has been locked this long (pixel
-    // clocks, 500 ms at 720p), so the monitor sees one clean start instead of
-    // the flapping input while the GPU re-detects the display after programming.
+    // clocks, 500 ms at 720p), so the monitor sees one clean start.
     parameter integer TX_HOLD_CYCLES = 37125000
 ) (
     input wire CLK1, RESET,
@@ -71,14 +70,13 @@ module mimas_filter_top #(
     end
     assign hdmi_rx_hpa = connected && !reference_reset;
     wire sda_low;
-    edid_slave #(.ONLY_720P(1)) edid (
+    edid_slave edid (
         .clk(CLK1), .rst(control_reset || !connected),
         .scl(hdmi_rx_scl), .sda(hdmi_rx_sda), .sda_low(sda_low)
     );
     assign hdmi_rx_sda = sda_low ? 1'b0 : 1'bz;
 
     wire pixel_clk, serial_clk, pixel_locked;
-    wire [15:0] rx_debug;
     wire [23:0] rx_rgb, reg_rgb, tx_rgb;
     wire rx_de, rx_hsync, rx_vsync, reg_de, reg_hsync, reg_vsync;
     wire tx_de, tx_hsync, tx_vsync;
@@ -88,7 +86,7 @@ module mimas_filter_top #(
         .tmds_clk_p(hdmi_rx_clk_p), .tmds_clk_n(hdmi_rx_clk_n),
         .tmds_p(hdmi_rx_p), .tmds_n(hdmi_rx_n),
         .pixel_clk(pixel_clk), .serial_clk(serial_clk), .locked(pixel_locked),
-        .rgb(rx_rgb), .de(rx_de), .hsync(rx_hsync), .vsync(rx_vsync), .debug(rx_debug)
+        .rgb(rx_rgb), .de(rx_de), .hsync(rx_hsync), .vsync(rx_vsync), .debug()
     );
     wire video_reset_async = core_reset || !pixel_locked;
     (* ASYNC_REG = "TRUE" *) reg [1:0] video_reset_sync = 2'b11;
@@ -120,15 +118,6 @@ module mimas_filter_top #(
             else tx_hold_count <= tx_hold_count + 1'b1;
         end
     end
-    // Read-only diagnostic: video starts since configuration (1 = one clean
-    // start). Deliberately never reset, not even by S3.
-    reg video_running = 0;
-    reg [6:0] video_starts = 0;
-    always @(posedge pixel_clk) begin
-        video_running <= !video_reset_sync[1];
-        if (!video_reset_sync[1] && !video_running && video_starts != 7'h7f)
-            video_starts <= video_starts + 1'b1;
-    end
     wire tx_reset = video_reset_async || !tx_enable;
     hdmi_tx transmitter (
         .pixel_clk(pixel_clk), .serial_clk(serial_clk), .reset(tx_reset),
@@ -140,31 +129,6 @@ module mimas_filter_top #(
     assign hdmi_tx_rsda = 1'bz;
     assign hdmi_rx_cec = 1'bz;
     assign hdmi_tx_cec = 1'bz;
-
-    reg seen_de = 0, seen_hs = 0, seen_vs = 0, seen_tx_de = 0;
-    always @(posedge pixel_clk or posedge video_reset_sync[1]) begin
-        if (video_reset_sync[1]) begin
-            seen_de <= 0; seen_hs <= 0; seen_vs <= 0; seen_tx_de <= 0;
-        end else begin
-            seen_de <= seen_de || rx_de;
-            seen_hs <= seen_hs || rx_hsync;
-            seen_vs <= seen_vs || rx_vsync;
-            seen_tx_de <= seen_tx_de || tx_de;
-        end
-    end
-    // USER1 scan register is read-only and never controls the video pipeline.
-    wire [31:0] debug_status = {8'ha7, rx_debug, seen_tx_de, seen_vs, seen_hs, seen_de,
-                               video_reset_sync[1], pixel_locked, connected, ref_locked};
-    hdmi_debug diagnostics (.status(debug_status));
-    wire [127:0] video_status;
-    video_probe probe (
-        .clk(pixel_clk), .reset(video_reset_sync[1]), .de(rx_de),
-        .hsync(rx_hsync), .vsync(rx_vsync), .status(video_status)
-    );
-    // The probe's magic word ends in 8'h00; that byte carries TX/lock state.
-    hdmi_debug #(.WIDTH(128), .CHAIN(2)) diagnostics_video (
-        .status({video_status[127:104], tx_enable, video_starts, video_status[95:0]})
-    );
 endmodule
 
 `default_nettype wire

@@ -6,6 +6,8 @@ set_property BITSTREAM.CONFIG.UNUSEDPIN Pullnone [current_design]
 
 set_property -dict {PACKAGE_PIN H4 IOSTANDARD LVCMOS33} [get_ports CLK1]
 set_property -dict {PACKAGE_PIN M2 IOSTANDARD LVCMOS33} [get_ports RESET]
+# DIP switch DP0 (from Numato's Mimas A7 master XDC, Sch = DP0).
+set_property -dict {PACKAGE_PIN B21 IOSTANDARD LVCMOS33} [get_ports dip_sw0]
 create_clock -name clk_100mhz -period 10.000 [get_ports CLK1]
 
 set_property -dict {PACKAGE_PIN K4 IOSTANDARD TMDS_33} [get_ports hdmi_rx_clk_p]
@@ -34,18 +36,25 @@ set_property -dict {PACKAGE_PIN E2 IOSTANDARD LVCMOS33} [get_ports hdmi_tx_cec]
 set_property -dict {PACKAGE_PIN D2 IOSTANDARD LVCMOS33} [get_ports hdmi_tx_rscl]
 set_property -dict {PACKAGE_PIN C2 IOSTANDARD LVCMOS33} [get_ports hdmi_tx_rsda]
 
-# The four TMDS pairs are asynchronous combinational input-to-output paths.
-# Calibrated IDELAYs match their routes. Bound latency; build.tcl checks their
-# relative delays at both corners and edges to a quarter of the 720p bit time.
-# Never false-path these lanes or infer a BUFG on the incoming clock lane.
-set tmds_inputs [get_ports {hdmi_rx_clk_p hdmi_rx_clk_n hdmi_rx_p[*] hdmi_rx_n[*]}]
-set tmds_outputs [get_ports {hdmi_tx_clk_p hdmi_tx_clk_n hdmi_tx_p[*] hdmi_tx_n[*]}]
-set_max_delay 10.000 -datapath_only -from $tmds_inputs -to $tmds_outputs
-set_min_delay 0.000 -from $tmds_inputs -to $tmds_outputs
+# Fixed 720p recovered clock; the receiver MMCM/BUFR derive 5x and 1x clocks.
+create_clock -name hdmi_pixel_in -period 13.468 [get_ports hdmi_rx_clk_p]
 
-# DDC and monitor HPD are synchronized at 100 MHz; S3 is the external reset.
+# Only this receiver owns the delay resources in bank 35.
+set_property IODELAY_GROUP rx_delay [get_cells -hier -filter {REF_NAME == IDELAYE2 || REF_NAME == IDELAYCTRL}]
+
+# Port CDC: asynchronous switches/DDC are sampled by dedicated input chains.
 set_false_path -from [get_ports RESET]
-set_false_path -from [get_ports hdmi_tx_hpd]
-set_false_path -from [get_ports {hdmi_rx_scl hdmi_rx_sda}]
-# Slow asynchronous control outputs (100 kHz open-drain DDC and hot-plug).
+set_false_path -from [get_ports dip_sw0] -to [get_cells -hier -filter {NAME =~ overlay/enable_sync_reg*}]
+set_false_path -from [get_ports hdmi_tx_hpd] -to [get_cells -hier -filter {NAME =~ hpd_sync_reg*}]
+set_false_path -from [get_ports {hdmi_rx_scl hdmi_rx_sda}] -to [get_cells -hier -filter {NAME =~ edid/*sync_reg*}]
 set_false_path -to [get_ports {hdmi_rx_sda hdmi_rx_hpa}]
+
+# Upstream CDC boundaries: cut the first synchronizer stage and asynchronous
+# bridge resets, never the registered RGB/timing path.
+set_false_path -to [get_pins -hier -regexp {.*SyncAsync.*/oSyncStages_reg\[0\]/D}]
+set_false_path -to [get_pins -hier -filter {NAME =~ */*SyncAsync*/* && (REF_PIN_NAME == PRE || REF_PIN_NAME == CLR)}]
+set_false_path -to [get_pins -hier -filter {NAME =~ */*SyncBase*/iIn_q_reg/* && (REF_PIN_NAME == PRE || REF_PIN_NAME == CLR)}]
+set_false_path -to [get_pins -hier -filter {NAME =~ video_reset_sync_reg*/* && (REF_PIN_NAME == PRE || REF_PIN_NAME == CLR)}]
+set_false_path -to [get_pins -hier -filter {NAME =~ control_reset_sync_reg*/* && (REF_PIN_NAME == PRE || REF_PIN_NAME == CLR)}]
+
+

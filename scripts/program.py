@@ -9,7 +9,7 @@ import sys
 
 root = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--bitstream", default="build/artifacts/mimas_hdmi_top.bit",
+parser.add_argument("--bitstream", default="build/retro_raster.bit",
                     help="Bitstream path, relative to the repository or absolute")
 args = parser.parse_args()
 bitstream = (root / args.bitstream).resolve()

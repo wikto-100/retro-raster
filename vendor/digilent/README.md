@@ -17,7 +17,7 @@ kClkSwap=true; this clock phase produced a normal live picture on the tested
 Mimas/monitor setup. RGB lane polarities are unchanged.
 Both upstream video ports use RBG packing; wrappers expose canonical RGB.
 The upstream XDC files are retained for reference; the project uses the scoped
-adaptation in constraints/mimas_a7_v3_filter.xdc, not the upstream OOC clocks.
+adaptation in constraints/mimas_a7_v3.xdc, not the upstream OOC clocks.
 The optional DDC and internal MMCM transmitter branch are disabled. The
 receiver's global pixel resynchronization and transmitter PLL are enabled.
 No ILA/generated IP or EDID data files are needed.
@@ -33,11 +33,6 @@ Local changes to upstream VHDL:
   overflow value. No shortened acquisition timeout or simulation bypass.
 - SyncBase.vhd: bridge asynchronous reset into the source clock before releasing
   the source register. Its reset previously came from the other clock domain.
-- dvi2rgb.vhd: expose read-only lane alignment/calibration status to USER1 JTAG.
-  The status does not control video. Source line endings are normalized to LF.
+- dvi2rgb.vhd: expose read-only lane alignment/calibration status (unused by
+  the top level). Source line endings are normalized to LF.
 
-The default transmitter test checks independently decoded serial pixels,
-timing and reset/reacquisition using real AMD PLL/SERDES models and a short
-raster. Optional receiver loopback/full-frame tests retain the real acquisition
-timeouts. Physical JTAG measurements validate the actual 720p input geometry.
-See docs/pixel-checkpoint.md for build, recovery and validation instructions.
