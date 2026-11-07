@@ -1,7 +1,11 @@
 library ieee;
 use ieee.std_logic_1164.all;
 
--- 720p receiver.
+-- HDMI receiver: wraps Digilent's dvi2rgb core (vendor/digilent).
+-- HDMI sends each color as a fast serial bit stream (TMDS: 10 bits per pixel
+-- per lane). The core samples those bits, finds where each pixel starts and
+-- decodes them back to 8-bit color plus DE/HSYNC/VSYNC. It also rebuilds
+-- the pixel clock from the HDMI clock lane. Set up for 720p only.
 entity hdmi_rx is
     port (
         ref_clk, reset : in std_logic;
@@ -17,6 +21,7 @@ end entity;
 architecture rtl of hdmi_rx is
     signal rbg : std_logic_vector(23 downto 0);
 begin
+    -- The core outputs red, blue, green; reorder to red, green, blue.
     rgb <= rbg(23 downto 16) & rbg(7 downto 0) & rbg(15 downto 8);
     core : entity work.dvi2rgb
         generic map (

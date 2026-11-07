@@ -1,20 +1,27 @@
 `default_nettype none
 
-// Runs DP0-DP7 in series, one clock each. Switches are latched at VSYNC.
-// One filter is enabled: the first switch on holds; when it turns off, the
-// lowest switch still on takes over.
+// Filter chain: the eight filters DP0-DP7 in a row. Every pixel passes
+// through all eight, one clock tick each. Only the filter whose switch is
+// selected changes the pixel; the others pass it through.
+//
+// Which filter is selected: the first switch turned on stays selected until
+// it is turned off. Then the lowest-numbered switch still on is selected.
+// The choice only changes at the start of a frame (VSYNC), so a frame is
+// never half filtered.
 module filter_chain (
     input wire pixel_clk, reset,
-    input wire [7:0] enable, // bit n = DPn is ON
+    input wire [7:0] enable, // bit n = 1 when switch DPn is ON
     input wire [23:0] rgb_in,
     input wire de_in, hsync_in, vsync_in,
     output wire [23:0] rgb_out,
     output wire de_out, hsync_out, vsync_out
 );
     (* ASYNC_REG = "TRUE" *) reg [7:0] enable_sync0 = 0, enable_sync1 = 0;
-    reg [7:0] frame_enable = 0; // one-hot or zero
+    reg [7:0] frame_enable = 0; // selected filter: one bit set, or none
     reg vsync_previous = 0;
-    // Synchronize the switches and pick the active filter once per frame.
+    // The switches pass through a two-stage synchronizer (enable_sync0/1).
+    // At each VSYNC rising edge: if the selected switch is still on, keep it;
+    // otherwise select the lowest switch that is on (or none).
     always @(posedge pixel_clk or posedge reset) begin
         if (reset) begin
             enable_sync0 <= 0; enable_sync1 <= 0; frame_enable <= 0; vsync_previous <= 0;
@@ -23,11 +30,14 @@ module filter_chain (
             enable_sync1 <= enable_sync0;
             vsync_previous <= vsync_in;
             if (vsync_in && !vsync_previous && !(frame_enable & enable_sync1))
-                frame_enable <= enable_sync1 & (~enable_sync1 + 1'b1); // lowest set bit
+                // x & -x keeps only the lowest 1 bit of x.
+                frame_enable <= enable_sync1 & (~enable_sync1 + 1'b1);
         end
     end
 
-    // Pixel position, delayed one clock per stage.
+    // Pixel position for the filters. x counts pixels along the line (0-1279)
+    // and resets in blanking. y counts lines (0-719) and resets at VSYNC.
+    // Stage n sees the pixel n ticks later, so its x/y is delayed n ticks.
     reg [10:0] x_count = 0, y_count = 0;
     reg de_previous = 0;
     always @(posedge pixel_clk or posedge reset) begin
@@ -50,11 +60,13 @@ module filter_chain (
         end
     end endgenerate
 
+    // Pixel buses between stages: bus 0 is the input, bus 8 the output.
     wire [23:0] rgb [0:8];
     wire de [0:8], hs [0:8], vs [0:8];
     assign {rgb[0], de[0], hs[0], vs[0]} = {rgb_in, de_in, hsync_in, vsync_in};
     assign {rgb_out, de_out, hsync_out, vsync_out} = {rgb[8], de[8], hs[8], vs[8]};
-    // Stage n reads pixel bus n and writes bus n + 1.
+    // FILTER_STAGE connects filter n from bus n to bus n + 1. It is a text
+    // macro that saves writing the same port list eight times.
 `define FILTER_STAGE(name, instance, n) \
     name instance ( \
         .pixel_clk(pixel_clk), .reset(reset), .enable(frame_enable[n]), .x(x[n]), .y(y[n]), \

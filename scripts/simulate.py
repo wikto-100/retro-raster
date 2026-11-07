@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Run the unit test (EDID/DDC, pixel register, filter chain)."""
+"""Used by `make sim`. Compiles and runs sim/tb_unit.sv in a simulator
+(Icarus Verilog if installed, otherwise Vivado's xsim)."""
 import os
 from pathlib import Path
 import shutil

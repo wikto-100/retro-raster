@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Explicitly load the project's bitstream into volatile FPGA SRAM via OpenOCD."""
+"""Used by `make program`. Loads the bitstream into the FPGA over USB with
+OpenOCD. The FPGA forgets it when power is turned off."""
 import argparse
 import os
 from pathlib import Path

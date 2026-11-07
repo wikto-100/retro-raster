@@ -1,6 +1,10 @@
 `timescale 1ns/1ps
 `default_nettype none
 
+// Unit test (testbench). Runs in a simulator, not on the board: it drives
+// the modules' inputs, checks their outputs, and stops with $fatal on the
+// first wrong value. Prints FPGA_VIDEO_PASS unit if everything matches.
+// Checks: EDID reads over DDC, video_register, the filter chain.
 module tb_unit;
     reg clk = 0;
     always #5 clk = ~clk;
@@ -83,7 +87,8 @@ module tb_unit;
         pixels_done = 1;
     end
 
-    // Filter chain: switch changes apply at the next VSYNC; first switch on holds.
+    // Filter chain test: sends small frames, changes switches mid-frame, and
+    // compares every output pixel with the expected filter result.
     localparam integer LATENCY = 8;
     reg ch_reset = 1;
     reg [7:0] dip = 0, model_enable = 0, model_enable_previous = 0;

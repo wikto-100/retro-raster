@@ -1,6 +1,8 @@
 `default_nettype none
 
-// Registers RGB and timing. Output starts at the first VSYNC after reset.
+// Copies the pixel and its timing signals through one register (one clock
+// tick of delay). After reset, the output stays black until the first VSYNC,
+// so the picture always starts at the top of a frame.
 module video_register (
     input wire pixel_clk,
     input wire reset,

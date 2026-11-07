@@ -1,14 +1,22 @@
 `default_nettype none
 
-// Read-only EDID at DDC address 0x50.
+// EDID responder.
+//
+// When the GPU sees HPD, it reads 128 bytes from address 0x50 on the DDC
+// wire pair (an I2C bus: SCL is the clock, SDA the data). This module plays
+// that memory chip. The GPU first writes an offset (which byte to start
+// at), then reads bytes one after another. After each byte the receiver of
+// the byte answers ACK (pulls SDA low for one bit) to say "got it".
 module edid_slave (
-    input  wire clk, // 100 MHz; DDC up to 100 kHz
+    input  wire clk, // 100 MHz, much faster than DDC (up to 400 kHz)
     input  wire rst,
     input  wire scl,
     input  wire sda,
-    output reg  sda_low = 0 // open drain: pull low or release, never drive high
+    output reg  sda_low = 0 // 1 = pull SDA low; 0 = let go (SDA floats high)
 );
-    // EDID 1.3, digital RGB, 1280x720 60 Hz only, no extensions.
+    // The 128 EDID bytes, first byte at the left. They say: EDID version 1.3,
+    // digital RGB display named "RetroRaster", one mode: 1280x720 at 60 Hz
+    // (74.25 MHz pixel clock). The last byte is a checksum.
     localparam [1023:0] EDID = {
         128'h00ffffffffffff004a92020000000000,
         128'h00240103800000780eee91a3544c9926,
@@ -19,10 +27,14 @@ module edid_slave (
         128'h6574726f5261737465720a20000000fd,
         128'h003c3c2d2d08000a202020202020006a
     };
+    // Byte at a given offset. Offsets past 127 read as 0xFF.
     function automatic [7:0] edid_byte(input [7:0] address);
         edid_byte = address[7] ? 8'hff : EDID[1023 - 8*address[6:0] -: 8];
     endfunction
 
+    // SCL and SDA come from the GPU at any time, so each passes through a
+    // two-flip-flop synchronizer. *_previous keeps last tick's value so we
+    // can see when a line changes.
     (* ASYNC_REG = "TRUE" *) reg [1:0] scl_sync = 2'b11;
     (* ASYNC_REG = "TRUE" *) reg [1:0] sda_sync = 2'b11;
     reg scl_previous = 1;
@@ -40,20 +52,33 @@ module edid_slave (
             sda_previous <= sda_sync[1];
         end
     end
+    // I2C rules: data bits are read when SCL rises and changed when SCL falls.
+    // SDA falling while SCL is high = START (a new message begins).
+    // SDA rising while SCL is high = STOP (the message ends).
     wire scl_rise = !scl_previous && scl_sync[1];
     wire scl_fall = scl_previous && !scl_sync[1];
     wire start_bit = scl_previous && scl_sync[1] && sda_previous && !sda_sync[1];
     wire stop_bit = scl_previous && scl_sync[1] && !sda_previous && sda_sync[1];
 
+    // State machine: which part of the I2C message we are in.
+    //   IDLE            waiting for START
+    //   ADDRESS         receiving the 7-bit device address + read/write bit
+    //   ADDRESS_ACK(_END) answering ACK if the address is ours (0x50)
+    //   OFFSET          receiving the byte offset
+    //   OFFSET_ACK(_END)  answering ACK for the offset
+    //   IGNORE          ignoring further writes (the EDID cannot be changed)
+    //   READ            sending one byte, highest bit first
+    //   READ_ACK        reading the GPU's ACK (it wants another byte) or NACK
+    //   READ_NEXT       starting the next byte, or stopping after a NACK
     localparam [3:0] IDLE = 0, ADDRESS = 1, ADDRESS_ACK = 2,
         ADDRESS_ACK_END = 3, OFFSET = 4, OFFSET_ACK = 5,
         OFFSET_ACK_END = 6, IGNORE = 7, READ = 8, READ_ACK = 9, READ_NEXT = 10;
     reg [3:0] state = IDLE;
-    reg [2:0] bit_index = 7;
-    reg [7:0] received = 0;
-    reg [7:0] offset = 0;
-    reg read_mode = 0;
-    reg master_ack = 0;
+    reg [2:0] bit_index = 7;     // which bit of the byte, 7 down to 0
+    reg [7:0] received = 0;      // bits shifted in from the GPU
+    reg [7:0] offset = 0;        // next EDID byte to send
+    reg read_mode = 0;           // GPU asked to read (1) or write (0)
+    reg master_ack = 0;          // GPU answered ACK after our byte
     wire [7:0] current_byte = edid_byte(offset);
 
     always @(posedge clk) begin
@@ -65,6 +90,7 @@ module edid_slave (
             read_mode <= 0;
             master_ack <= 0;
             sda_low <= 0;
+        // START and STOP can come at any time and override the state.
         end else if (start_bit) begin
             state <= ADDRESS;
             bit_index <= 7;
@@ -102,7 +128,7 @@ module edid_slave (
             end
             OFFSET_ACK_END: if (scl_fall) begin
                 sda_low <= 0;
-                state <= IGNORE; // further data writes are NACKed; ROM is immutable
+                state <= IGNORE;
             end
             READ: if (scl_fall) begin
                 if (bit_index == 0) begin

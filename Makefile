@@ -1,3 +1,4 @@
+# make sim / build / gui / program. Run from the repository root.
 JOBS ?= 4
 BITSTREAM ?= build/retro_raster.bit
 
@@ -11,6 +12,6 @@ build: sim
 gui:
 	./scripts/vivado.sh -mode gui -source scripts/project.tcl
 
-# Load into SRAM.
+# Load the bitstream into the FPGA. It is lost on power-off.
 program:
 	python3 scripts/program.py --bitstream "$(BITSTREAM)"

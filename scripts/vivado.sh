@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Run Vivado from build/vivado.
+# Starts Vivado from build/vivado so its log files stay out of the source
+# folders. Set VIVADO_ROOT if Vivado is not in /opt/Xilinx/2026.1/Vivado.
 set -eo pipefail
 
 caller_dir="$PWD"

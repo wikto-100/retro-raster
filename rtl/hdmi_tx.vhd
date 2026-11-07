@@ -13,7 +13,11 @@ end entity;
 
 architecture rtl of hdmi_tx is
 begin
-    -- kClkSwap: inverted TMDS clock pattern, needed by the tested monitor.
+    -- HDMI transmitter: wraps Digilent's rgb2dvi core (vendor/digilent).
+    -- Encodes each pixel to TMDS and shifts it out serially. A PLL (clock
+    -- multiplier) makes the 5x faster bit clock from the pixel clock.
+    -- kClkSwap inverts the HDMI clock lane; the tested monitor needs it.
+    -- vid_pData reorders red, green, blue to the core's red, blue, green.
     core : entity work.rgb2dvi
         generic map (
             kGenerateSerialClk => true, kClkPrimitive => "PLL", kRstActiveHigh => true,

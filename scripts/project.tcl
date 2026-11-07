@@ -1,4 +1,5 @@
-# Create or open build/retro_raster.
+# Creates or opens the Vivado project in build/retro_raster and adds the
+# source files and constraints to it. Used by `make build` and `make gui`.
 set repo_root [file normalize [file join [file dirname [info script]] ..]]
 set project_dir [file join $repo_root build retro_raster]
 set project_file [file join $project_dir retro_raster.xpr]

@@ -1,4 +1,7 @@
-# Implement, check timing and DRC, write the bitstream.
+# Used by `make build`. Turns the design into a bitstream (the file loaded
+# into the FPGA): synthesis (code to logic), placement and routing (logic to
+# chip locations). Stops with an error if any signal is too slow for its
+# clock (timing) or a design rule check (DRC) fails.
 if {[catch {
     source [file join [file dirname [info script]] project.tcl]
     set jobs [expr {[llength $argv] > 0 ? [lindex $argv 0] : 4}]
