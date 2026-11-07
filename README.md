@@ -28,7 +28,9 @@ that mode with 8-bit RGB. The FPGA does not scale other resolutions. On KDE,
 enable mirroring if the display appears as a separate desktop.
 
 - **DP0**: grayscale (BT.601 luma: 77R + 150G + 29B, /256).
-- **DP1-DP7**: placeholders that pass video through unchanged.
+- **DP1**: green phosphor terminal: brightness mapped from a faint green-black
+  to P1 green, odd rows darkened to 60% as scanlines.
+- **DP2-DP7**: placeholders that pass video through unchanged.
 
   Only one filter runs at a time. The first switch turned on keeps the
   picture while it stays on; other switches have no effect. When it turns
@@ -47,12 +49,14 @@ enable mirroring if the display appears as a separate desktop.
 | `rtl/video_register.sv` | Registers RGB/timing; output starts on a frame boundary |
 | `filters/filter_chain.sv` | Syncs DP0-DP7 per frame, picks the one active filter |
 | `filters/dp0_filter.sv` | DP0 grayscale |
-| `filters/dp1_filter.sv` ... `dp7_filter.sv` | Placeholders for DP1-DP7 |
+| `filters/dp1_filter.sv` | DP1 green phosphor terminal |
+| `filters/dp2_filter.sv` ... `dp7_filter.sv` | Placeholders for DP2-DP7 |
 | `constraints/mimas_a7_v3.xdc` | Pins and timing exceptions |
 
 Every filter has the same ports and adds one pixel-clock register stage to
 RGB and timing alike. To add one, edit the `rgb_out` expression in a
-placeholder; `enable` is high while its switch is on, already frame-aligned.
+placeholder; `enable` is high while its switch is on, already frame-aligned,
+and `x`/`y` give the input pixel's position in the 1280x720 active area.
 
 The transmitter uses an inverted TMDS clock pattern (`kClkSwap`), which the
 tested monitor requires. Output is DVI-compatible video: no audio, HDR, VRR

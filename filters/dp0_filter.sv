@@ -3,6 +3,7 @@
 // DP0: grayscale (BT.601 luma, weights sum to 256 so white stays white).
 module dp0_filter (
     input wire pixel_clk, reset, enable,
+    input wire [10:0] x, y, // position of rgb_in within active video
     input wire [23:0] rgb_in,
     input wire de_in, hsync_in, vsync_in,
     output reg [23:0] rgb_out = 0,

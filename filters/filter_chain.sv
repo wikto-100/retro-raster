@@ -31,13 +31,37 @@ module filter_chain (
         end
     end
 
+    // Position of each stage's input pixel: counted at the chain input, then
+    // delayed one clock per stage like the video.
+    reg [10:0] x_count = 0, y_count = 0;
+    reg de_previous = 0;
+    always @(posedge pixel_clk or posedge reset) begin
+        if (reset) begin
+            x_count <= 0; y_count <= 0; de_previous <= 0;
+        end else begin
+            de_previous <= de_in;
+            x_count <= de_in ? x_count + 1'b1 : 11'd0;
+            if (vsync_in && !vsync_previous) y_count <= 0;
+            else if (de_previous && !de_in) y_count <= y_count + 1'b1;
+        end
+    end
+    reg [10:0] x [0:7], y [0:7];
+    always @* begin x[0] = x_count; y[0] = y_count; end
+    genvar stage;
+    generate for (stage = 1; stage < 8; stage = stage + 1) begin : position_delay
+        always @(posedge pixel_clk) begin
+            x[stage] <= x[stage - 1];
+            y[stage] <= y[stage - 1];
+        end
+    end endgenerate
+
     wire [23:0] rgb [0:8];
     wire de [0:8], hs [0:8], vs [0:8];
     assign {rgb[0], de[0], hs[0], vs[0]} = {rgb_in, de_in, hsync_in, vsync_in};
     assign {rgb_out, de_out, hsync_out, vsync_out} = {rgb[8], de[8], hs[8], vs[8]};
 `define FILTER_STAGE(name, instance, n) \
     name instance ( \
-        .pixel_clk(pixel_clk), .reset(reset), .enable(frame_enable[n]), \
+        .pixel_clk(pixel_clk), .reset(reset), .enable(frame_enable[n]), .x(x[n]), .y(y[n]), \
         .rgb_in(rgb[n]), .de_in(de[n]), .hsync_in(hs[n]), .vsync_in(vs[n]), \
         .rgb_out(rgb[n+1]), .de_out(de[n+1]), .hsync_out(hs[n+1]), .vsync_out(vs[n+1]) \
     );

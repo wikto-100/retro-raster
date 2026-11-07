@@ -107,9 +107,22 @@ module tb_unit;
             gray_of = {3{l[15:8]}};
         end
     endfunction
-    reg [26:0] expected [0:4095];
+    function automatic [23:0] phosphor_of(input [23:0] c, input integer row);
+        reg [7:0] l;
+        reg [15:0] r, g, b;
+        begin
+            l = gray_of(c) >> 16;
+            r = l * (row % 2 ? 29 : 49);
+            g = l * (row % 2 ? 146 : 242);
+            b = l * (row % 2 ? 58 : 97);
+            phosphor_of = {(row % 2 ? 8'd1 : 8'd2) + r[15:8],
+                           (row % 2 ? 8'd8 : 8'd13) + g[15:8],
+                           (row % 2 ? 8'd3 : 8'd5) + b[15:8]};
+        end
+    endfunction
+    reg [26:0] expected [0:8191];
     integer cycle = 0;
-    task automatic ch_tick(input [23:0] color, input active, h, v);
+    task automatic ch_tick(input [23:0] color, input active, h, v, input integer row);
         begin
             @(negedge clk);
             {ch_rgb, ch_de, ch_hs, ch_vs} = {color, active, h, v};
@@ -121,7 +134,8 @@ module tb_unit;
                 frames_checked = frames_checked + 1;
             end
             ch_vs_previous = v;
-            expected[cycle] = {!active ? 24'b0 : model_enable[0] ? gray_of(color) : color,
+            expected[cycle] = {!active ? 24'b0 : model_enable[0] ? gray_of(color) :
+                               model_enable[1] ? phosphor_of(color, row) : color,
                                active, h, v};
             @(posedge clk); #1;
             if (cycle >= LATENCY - 1 &&
@@ -135,14 +149,14 @@ module tb_unit;
     task automatic ch_frame(input [7:0] switch_mid_frame);
         integer row, col;
         begin
-            ch_tick(0, 0, 0, 1);
-            ch_tick(0, 0, 0, 0);
+            ch_tick(0, 0, 0, 1, 0);
+            ch_tick(0, 0, 0, 0, 0);
             for (row = 0; row < 3; row = row + 1) begin
                 if (row == 1) dip = switch_mid_frame;
                 for (col = 0; col < 8; col = col + 1)
-                    ch_tick(colors[col] ^ (row * 24'h0b1d29), 1, 0, 0);
-                ch_tick(24'hffffff, 0, 1, 0);
-                ch_tick(24'hffffff, 0, 0, 0);
+                    ch_tick(colors[col] ^ (row * 24'h0b1d29), 1, 0, 0, row);
+                ch_tick(24'hffffff, 0, 1, 0, row);
+                ch_tick(24'hffffff, 0, 0, 0, row);
             end
         end
     endtask
@@ -164,7 +178,12 @@ module tb_unit;
         ch_frame(8'h80);    // only DP7: DP7 active
         ch_frame(8'h81);    // DP0 on while DP7 active: no effect, not gray
         ch_frame(8'h00);
+        ch_frame(8'h02);    // DP1: green phosphor with scanlines on odd rows
+        ch_frame(8'h03);    // DP0 on while DP1 active: no effect
         ch_frame(8'h00);
+        ch_frame(8'h00);
+        if (phosphor_of(24'hffffff, 0) !== 24'h32fe65 || phosphor_of(0, 0) !== 24'h020d05)
+            $fatal(1, "Phosphor endpoints changed");
         if (cycle < 100) $fatal(1, "Filter chain test too short");
         filter_done = 1;
     end
