@@ -32,11 +32,16 @@ set sources {
     rtl/hdmi_tx.vhd
     rtl/edid_slave.sv
     rtl/video_register.sv
-    rtl/grayscale_filter.sv
+    filters/grayscale_filter.sv
     rtl/top.sv
 }
-foreach relative $sources {
-    set path [file join $repo_root $relative]
+set paths {}
+foreach relative $sources { lappend paths [file normalize [file join $repo_root $relative]] }
+# Drop files that were moved or removed since the project was created.
+foreach file [get_files -quiet -of_objects [get_filesets sources_1]] {
+    if {[lsearch -exact $paths [file normalize $file]] < 0} { remove_files $file }
+}
+foreach path $paths {
     if {[llength [get_files -quiet $path]] == 0} { add_files -norecurse $path }
     if {[file extension $path] eq ".vhd"} { set_property file_type {VHDL 2008} [get_files $path] }
 }

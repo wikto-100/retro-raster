@@ -8,7 +8,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 FILES = [ROOT / f for f in ("rtl/edid_slave.sv", "rtl/video_register.sv",
-                            "rtl/grayscale_filter.sv", "sim/tb_unit.sv")]
+                            "filters/grayscale_filter.sv", "sim/tb_unit.sv")]
 work = ROOT / "build/sim"
 work.mkdir(parents=True, exist_ok=True)
 

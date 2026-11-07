@@ -41,7 +41,7 @@ enable mirroring if the display appears as a separate desktop.
 | `rtl/edid_slave.sv` | Read-only 720p EDID at DDC address 0x50 |
 | `rtl/hdmi_rx.vhd`, `rtl/hdmi_tx.vhd` | Wrappers for Digilent dvi2rgb/rgb2dvi (`vendor/`) |
 | `rtl/video_register.sv` | Registers RGB/timing; output starts on a frame boundary |
-| `rtl/grayscale_filter.sv` | The DP0 grayscale filter |
+| `filters/grayscale_filter.sv` | The DP0 grayscale filter |
 | `constraints/mimas_a7_v3.xdc` | Pins and timing exceptions |
 
 The transmitter uses an inverted TMDS clock pattern (`kClkSwap`), which the
