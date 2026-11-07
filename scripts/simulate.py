@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the unit test (EDID/DDC, pixel register, grayscale filter)."""
+"""Run the unit test (EDID/DDC, pixel register, filter chain)."""
 import os
 from pathlib import Path
 import shutil
@@ -7,8 +7,8 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-FILES = [ROOT / f for f in ("rtl/edid_slave.sv", "rtl/video_register.sv",
-                            "filters/grayscale_filter.sv", "sim/tb_unit.sv")]
+FILES = [ROOT / "rtl/edid_slave.sv", ROOT / "rtl/video_register.sv",
+         *sorted((ROOT / "filters").glob("*.sv")), ROOT / "sim/tb_unit.sv"]
 work = ROOT / "build/sim"
 work.mkdir(parents=True, exist_ok=True)
 

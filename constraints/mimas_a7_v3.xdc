@@ -6,8 +6,15 @@ set_property BITSTREAM.CONFIG.UNUSEDPIN Pullnone [current_design]
 
 set_property -dict {PACKAGE_PIN H4 IOSTANDARD LVCMOS33} [get_ports CLK1]
 set_property -dict {PACKAGE_PIN M2 IOSTANDARD LVCMOS33} [get_ports RESET]
-# DIP switch DP0 (from Numato's Mimas A7 master XDC, Sch = DP0).
-set_property -dict {PACKAGE_PIN B21 IOSTANDARD LVCMOS33} [get_ports dip_sw0]
+# DIP switches DP0-DP7 (Numato's Mimas A7 master XDC).
+set_property -dict {PACKAGE_PIN B21 IOSTANDARD LVCMOS33} [get_ports {dip_sw[0]}]
+set_property -dict {PACKAGE_PIN A21 IOSTANDARD LVCMOS33} [get_ports {dip_sw[1]}]
+set_property -dict {PACKAGE_PIN E22 IOSTANDARD LVCMOS33} [get_ports {dip_sw[2]}]
+set_property -dict {PACKAGE_PIN D22 IOSTANDARD LVCMOS33} [get_ports {dip_sw[3]}]
+set_property -dict {PACKAGE_PIN E21 IOSTANDARD LVCMOS33} [get_ports {dip_sw[4]}]
+set_property -dict {PACKAGE_PIN D21 IOSTANDARD LVCMOS33} [get_ports {dip_sw[5]}]
+set_property -dict {PACKAGE_PIN G21 IOSTANDARD LVCMOS33} [get_ports {dip_sw[6]}]
+set_property -dict {PACKAGE_PIN G22 IOSTANDARD LVCMOS33} [get_ports {dip_sw[7]}]
 create_clock -name clk_100mhz -period 10.000 [get_ports CLK1]
 
 set_property -dict {PACKAGE_PIN K4 IOSTANDARD TMDS_33} [get_ports hdmi_rx_clk_p]
@@ -44,7 +51,7 @@ set_property IODELAY_GROUP rx_delay [get_cells -hier -filter {REF_NAME == IDELAY
 
 # Port CDC: asynchronous switches/DDC are sampled by dedicated input chains.
 set_false_path -from [get_ports RESET]
-set_false_path -from [get_ports dip_sw0] -to [get_cells -hier -filter {NAME =~ filter/enable_sync_reg*}]
+set_false_path -from [get_ports {dip_sw[*]}] -to [get_cells -hier -filter {NAME =~ filters/enable_sync0_reg*}]
 set_false_path -from [get_ports hdmi_tx_hpd] -to [get_cells -hier -filter {NAME =~ hpd_sync_reg*}]
 set_false_path -from [get_ports {hdmi_rx_scl hdmi_rx_sda}] -to [get_cells -hier -filter {NAME =~ edid/*sync_reg*}]
 set_false_path -to [get_ports {hdmi_rx_sda hdmi_rx_hpa}]

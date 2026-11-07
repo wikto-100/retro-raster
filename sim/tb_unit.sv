@@ -83,16 +83,22 @@ module tb_unit;
         pixels_done = 1;
     end
 
-    // Grayscale filter: 8x3 active raster, switch latched per frame.
-    reg ov_reset = 1, ov_enable = 0;
-    reg [23:0] ov_rgb = 0;
-    reg ov_de = 0, ov_hs = 0, ov_vs = 0;
-    wire [23:0] ov_out_rgb;
-    wire ov_out_de, ov_out_hs, ov_out_vs;
-    grayscale_filter filter (
-        .pixel_clk(clk), .reset(ov_reset), .enable(ov_enable),
-        .rgb_in(ov_rgb), .de_in(ov_de), .hsync_in(ov_hs), .vsync_in(ov_vs),
-        .rgb_out(ov_out_rgb), .de_out(ov_out_de), .hsync_out(ov_out_hs), .vsync_out(ov_out_vs)
+    // Filter chain: 8 one-clock stages; DP0 grayscale, DP1-DP7 pass through.
+    // Switches change mid-frame and must take effect at the next VSYNC.
+    // Exclusive: the active switch holds until it turns off; then the lowest
+    // switch still on takes over.
+    localparam integer LATENCY = 8;
+    reg ch_reset = 1;
+    reg [7:0] dip = 0, model_enable = 0, model_enable_previous = 0;
+    integer frames_checked = 0;
+    reg [23:0] ch_rgb = 0;
+    reg ch_de = 0, ch_hs = 0, ch_vs = 0, ch_vs_previous = 0;
+    wire [23:0] ch_out_rgb;
+    wire ch_out_de, ch_out_hs, ch_out_vs;
+    filter_chain chain (
+        .pixel_clk(clk), .reset(ch_reset), .enable(dip),
+        .rgb_in(ch_rgb), .de_in(ch_de), .hsync_in(ch_hs), .vsync_in(ch_vs),
+        .rgb_out(ch_out_rgb), .de_out(ch_out_de), .hsync_out(ch_out_hs), .vsync_out(ch_out_vs)
     );
     function automatic [23:0] gray_of(input [23:0] c);
         reg [15:0] l;
@@ -101,28 +107,42 @@ module tb_unit;
             gray_of = {3{l[15:8]}};
         end
     endfunction
-    task automatic ov_tick(input [23:0] color, input active, h, v, input [23:0] expect_rgb);
+    reg [26:0] expected [0:4095];
+    integer cycle = 0;
+    task automatic ch_tick(input [23:0] color, input active, h, v);
         begin
             @(negedge clk);
-            {ov_rgb, ov_de, ov_hs, ov_vs} = {color, active, h, v};
+            {ch_rgb, ch_de, ch_hs, ch_vs} = {color, active, h, v};
+            if (v && !ch_vs_previous) begin
+                if (!(model_enable & dip)) model_enable = dip & (~dip + 8'd1);
+                if (frames_checked > 0 && chain.frame_enable !== model_enable_previous)
+                    $fatal(1, "Active filter %b, expected %b", chain.frame_enable, model_enable_previous);
+                model_enable_previous = model_enable;
+                frames_checked = frames_checked + 1;
+            end
+            ch_vs_previous = v;
+            expected[cycle] = {!active ? 24'b0 : model_enable[0] ? gray_of(color) : color,
+                               active, h, v};
             @(posedge clk); #1;
-            if ({ov_out_rgb, ov_out_de, ov_out_hs, ov_out_vs} !== {expect_rgb, active, h, v})
-                $fatal(1, "Grayscale mismatch: in %h got %h expected %h", color, ov_out_rgb, expect_rgb);
+            if (cycle >= LATENCY - 1 &&
+                {ch_out_rgb, ch_out_de, ch_out_hs, ch_out_vs} !== expected[cycle - (LATENCY - 1)])
+                $fatal(1, "Filter chain mismatch at cycle %0d: got %h expected %h", cycle,
+                       {ch_out_rgb, ch_out_de, ch_out_hs, ch_out_vs}, expected[cycle - (LATENCY - 1)]);
+            cycle = cycle + 1;
         end
     endtask
     reg [23:0] colors [0:7];
-    task automatic ov_frame(input gray);
+    task automatic ch_frame(input [7:0] switch_mid_frame);
         integer row, col;
         begin
-            ov_tick(0, 0, 0, 1, 0);
-            ov_tick(0, 0, 0, 0, 0);
+            ch_tick(0, 0, 0, 1);
+            ch_tick(0, 0, 0, 0);
             for (row = 0; row < 3; row = row + 1) begin
+                if (row == 1) dip = switch_mid_frame;
                 for (col = 0; col < 8; col = col + 1)
-                    ov_tick(colors[col] ^ (row * 24'h0b1d29), 1, 0, 0,
-                            gray ? gray_of(colors[col] ^ (row * 24'h0b1d29))
-                                 : colors[col] ^ (row * 24'h0b1d29));
-                ov_tick(24'hffffff, 0, 1, 0, 0);
-                ov_tick(24'hffffff, 0, 0, 0, 0);
+                    ch_tick(colors[col] ^ (row * 24'h0b1d29), 1, 0, 0);
+                ch_tick(24'hffffff, 0, 1, 0);
+                ch_tick(24'hffffff, 0, 0, 0);
             end
         end
     endtask
@@ -133,14 +153,19 @@ module tb_unit;
         if (gray_of(24'hffffff) !== 24'hffffff || gray_of(0) !== 0)
             $fatal(1, "Grayscale must keep black and white");
         repeat (5) @(negedge clk);
-        ov_reset = 0;
-        ov_frame(0);
-        ov_enable = 1;          // switched mid-frame: takes effect next frame
-        ov_frame(0);
-        ov_frame(1);
-        ov_enable = 0;
-        ov_frame(1);
-        ov_frame(0);
+        ch_reset = 0;
+        ch_frame(8'h00);
+        ch_frame(8'h01);    // DP0 on mid-frame: grayscale from the next frame
+        ch_frame(8'hff);    // all others on: DP0 keeps the picture (still gray)
+        ch_frame(8'h0e);    // DP0 off: lowest still on (DP1) takes over
+        ch_frame(8'h0f);    // DP0 back on while DP1 active: no effect
+        ch_frame(8'h01);    // DP1-DP3 off: DP0 takes over again (gray)
+        ch_frame(8'h01);
+        ch_frame(8'h80);    // only DP7: DP7 active
+        ch_frame(8'h81);    // DP0 on while DP7 active: no effect, not gray
+        ch_frame(8'h00);
+        ch_frame(8'h00);
+        if (cycle < 100) $fatal(1, "Filter chain test too short");
         filter_done = 1;
     end
     initial begin

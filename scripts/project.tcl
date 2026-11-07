@@ -32,7 +32,15 @@ set sources {
     rtl/hdmi_tx.vhd
     rtl/edid_slave.sv
     rtl/video_register.sv
-    filters/grayscale_filter.sv
+    filters/dp0_filter.sv
+    filters/dp1_filter.sv
+    filters/dp2_filter.sv
+    filters/dp3_filter.sv
+    filters/dp4_filter.sv
+    filters/dp5_filter.sv
+    filters/dp6_filter.sv
+    filters/dp7_filter.sv
+    filters/filter_chain.sv
     rtl/top.sv
 }
 set paths {}

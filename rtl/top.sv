@@ -1,7 +1,7 @@
 `default_nettype none
 
-// RetroRaster: decode 720p HDMI, convert to grayscale while DIP switch DP0
-// is on, re-encode to HDMI OUT.
+// RetroRaster: decode 720p HDMI, apply the filters selected by DIP switches
+// DP0-DP7 (filters/filter_chain.sv), re-encode to HDMI OUT.
 module top #(
     parameter integer HPD_DELAY_CYCLES = 10000000,
     // HDMI OUT stays idle until the input has been locked this long (pixel
@@ -9,7 +9,7 @@ module top #(
     parameter integer TX_HOLD_CYCLES = 37125000
 ) (
     input wire CLK1, RESET,
-    input wire dip_sw0,
+    input wire [7:0] dip_sw, // DPn, reads low when ON
     input wire hdmi_rx_clk_p, hdmi_rx_clk_n,
     input wire [2:0] hdmi_rx_p, hdmi_rx_n,
     output wire hdmi_rx_hpa,
@@ -99,8 +99,8 @@ module top #(
         .rgb_in(rx_rgb), .de_in(rx_de), .hsync_in(rx_hsync), .vsync_in(rx_vsync),
         .rgb_out(reg_rgb), .de_out(reg_de), .hsync_out(reg_hsync), .vsync_out(reg_vsync)
     );
-    grayscale_filter filter (
-        .pixel_clk(pixel_clk), .reset(video_reset_sync[1]), .enable(!dip_sw0), // DP0 reads low when ON
+    filter_chain filters (
+        .pixel_clk(pixel_clk), .reset(video_reset_sync[1]), .enable(~dip_sw),
         .rgb_in(reg_rgb), .de_in(reg_de), .hsync_in(reg_hsync), .vsync_in(reg_vsync),
         .rgb_out(tx_rgb), .de_out(tx_de), .hsync_out(tx_hsync), .vsync_out(tx_vsync)
     );
