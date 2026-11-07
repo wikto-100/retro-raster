@@ -1,7 +1,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
 
--- Fixed 720p receiver. Re-register into the global pixel clock for processing.
+-- 720p receiver.
 entity hdmi_rx is
     port (
         ref_clk, reset : in std_logic;

@@ -1,4 +1,4 @@
-# Implement, require clean timing and DRC, write the bitstream.
+# Implement, check timing and DRC, write the bitstream.
 if {[catch {
     source [file join [file dirname [info script]] project.tcl]
     set jobs [expr {[llength $argv] > 0 ? [lindex $argv 0] : 4}]

@@ -11,6 +11,6 @@ build: sim
 gui:
 	./scripts/vivado.sh -mode gui -source scripts/project.tcl
 
-# Load into SRAM only (volatile); does not rebuild or write flash.
+# Load into SRAM.
 program:
 	python3 scripts/program.py --bitstream "$(BITSTREAM)"

@@ -1,12 +1,11 @@
-# Numato Mimas A7 V3.0, xc7a50tfgg484-1. Pins follow Numato's V3.0 master XDC;
-# only pins used by this design are included.
+# Numato Mimas A7 V3.0 (xc7a50tfgg484-1).
 set_property CFGBVS VCCO [current_design]
 set_property CONFIG_VOLTAGE 3.3 [current_design]
 set_property BITSTREAM.CONFIG.UNUSEDPIN Pullnone [current_design]
 
 set_property -dict {PACKAGE_PIN H4 IOSTANDARD LVCMOS33} [get_ports CLK1]
 set_property -dict {PACKAGE_PIN M2 IOSTANDARD LVCMOS33} [get_ports RESET]
-# DIP switches DP0-DP7 (Numato's Mimas A7 master XDC).
+# DIP switches DP0-DP7.
 set_property -dict {PACKAGE_PIN B21 IOSTANDARD LVCMOS33} [get_ports {dip_sw[0]}]
 set_property -dict {PACKAGE_PIN A21 IOSTANDARD LVCMOS33} [get_ports {dip_sw[1]}]
 set_property -dict {PACKAGE_PIN E22 IOSTANDARD LVCMOS33} [get_ports {dip_sw[2]}]
@@ -43,21 +42,20 @@ set_property -dict {PACKAGE_PIN E2 IOSTANDARD LVCMOS33} [get_ports hdmi_tx_cec]
 set_property -dict {PACKAGE_PIN D2 IOSTANDARD LVCMOS33} [get_ports hdmi_tx_rscl]
 set_property -dict {PACKAGE_PIN C2 IOSTANDARD LVCMOS33} [get_ports hdmi_tx_rsda]
 
-# Fixed 720p recovered clock; the receiver MMCM/BUFR derive 5x and 1x clocks.
+# 720p pixel clock.
 create_clock -name hdmi_pixel_in -period 13.468 [get_ports hdmi_rx_clk_p]
 
-# Only this receiver owns the delay resources in bank 35.
+# Receiver IDELAY group.
 set_property IODELAY_GROUP rx_delay [get_cells -hier -filter {REF_NAME == IDELAYE2 || REF_NAME == IDELAYCTRL}]
 
-# Port CDC: asynchronous switches/DDC are sampled by dedicated input chains.
+# Asynchronous inputs.
 set_false_path -from [get_ports RESET]
 set_false_path -from [get_ports {dip_sw[*]}] -to [get_cells -hier -filter {NAME =~ filters/enable_sync0_reg*}]
 set_false_path -from [get_ports hdmi_tx_hpd] -to [get_cells -hier -filter {NAME =~ hpd_sync_reg*}]
 set_false_path -from [get_ports {hdmi_rx_scl hdmi_rx_sda}] -to [get_cells -hier -filter {NAME =~ edid/*sync_reg*}]
 set_false_path -to [get_ports {hdmi_rx_sda hdmi_rx_hpa}]
 
-# Upstream CDC boundaries: cut the first synchronizer stage and asynchronous
-# bridge resets, never the registered RGB/timing path.
+# Synchronizer first stages and asynchronous reset bridges.
 set_false_path -to [get_pins -hier -regexp {.*SyncAsync.*/oSyncStages_reg\[0\]/D}]
 set_false_path -to [get_pins -hier -filter {NAME =~ */*SyncAsync*/* && (REF_PIN_NAME == PRE || REF_PIN_NAME == CLR)}]
 set_false_path -to [get_pins -hier -filter {NAME =~ */*SyncBase*/iIn_q_reg/* && (REF_PIN_NAME == PRE || REF_PIN_NAME == CLR)}]

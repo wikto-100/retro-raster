@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Keep Vivado's logs, journals, and .Xil cache in the project build directory.
+# Run Vivado from build/vivado.
 set -eo pipefail
 
 caller_dir="$PWD"
@@ -14,8 +14,7 @@ if [[ ! -x "$vivado_root/bin/vivado" ]]; then
     exit 127
 fi
 
-# Resolve project and source paths before changing the working directory.
-# Arguments following -tclargs belong to the Tcl script and pass through as given.
+# Make -source and .xpr paths absolute; leave -tclargs as is.
 args=("$@")
 for ((i = 0; i < ${#args[@]}; i++)); do
     case "${args[i]}" in

@@ -1,13 +1,8 @@
 `default_nettype none
 
-// Runs the DP0..DP7 filters in series. Each filter has the same ports, adds
-// one register stage to RGB and timing alike, and filters active pixels while
-// its `enable` is high. The switches are asynchronous: they are synchronized
-// here and only sampled at VSYNC, so filters switch on whole frames.
-//
-// Filters are exclusive: at most one `enable` is high. The first switch turned
-// on keeps the picture while it stays on; other switches have no effect. When
-// it turns off, the lowest-numbered switch still on (if any) takes over.
+// Runs DP0-DP7 in series, one clock each. Switches are latched at VSYNC.
+// One filter is enabled: the first switch on holds; when it turns off, the
+// lowest switch still on takes over.
 module filter_chain (
     input wire pixel_clk, reset,
     input wire [7:0] enable, // bit n = DPn is ON
@@ -19,6 +14,7 @@ module filter_chain (
     (* ASYNC_REG = "TRUE" *) reg [7:0] enable_sync0 = 0, enable_sync1 = 0;
     reg [7:0] frame_enable = 0; // one-hot or zero
     reg vsync_previous = 0;
+    // Synchronize the switches and pick the active filter once per frame.
     always @(posedge pixel_clk or posedge reset) begin
         if (reset) begin
             enable_sync0 <= 0; enable_sync1 <= 0; frame_enable <= 0; vsync_previous <= 0;
@@ -31,8 +27,7 @@ module filter_chain (
         end
     end
 
-    // Position of each stage's input pixel: counted at the chain input, then
-    // delayed one clock per stage like the video.
+    // Pixel position, delayed one clock per stage.
     reg [10:0] x_count = 0, y_count = 0;
     reg de_previous = 0;
     always @(posedge pixel_clk or posedge reset) begin
@@ -59,6 +54,7 @@ module filter_chain (
     wire de [0:8], hs [0:8], vs [0:8];
     assign {rgb[0], de[0], hs[0], vs[0]} = {rgb_in, de_in, hsync_in, vsync_in};
     assign {rgb_out, de_out, hsync_out, vsync_out} = {rgb[8], de[8], hs[8], vs[8]};
+    // Stage n reads pixel bus n and writes bus n + 1.
 `define FILTER_STAGE(name, instance, n) \
     name instance ( \
         .pixel_clk(pixel_clk), .reset(reset), .enable(frame_enable[n]), .x(x[n]), .y(y[n]), \

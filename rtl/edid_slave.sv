@@ -1,7 +1,6 @@
 `default_nettype none
 
-// Read-only E-DDC base block at 7-bit I2C address 0x50. No extensions.
-// Supports offset writes, repeated START, sequential reads, ACK and NACK.
+// Read-only EDID at DDC address 0x50.
 module edid_slave (
     input  wire clk, // 100 MHz; DDC up to 100 kHz
     input  wire rst,
@@ -9,8 +8,7 @@ module edid_slave (
     input  wire sda,
     output reg  sda_low = 0 // open drain: pull low or release, never drive high
 );
-    // EDID 1.3, digital RGB, 1280x720 60 Hz (74.25 MHz, +H/+V) as the only
-    // mode, no extensions: DVI-compatible RGB. Byte 127 is the checksum.
+    // EDID 1.3, digital RGB, 1280x720 60 Hz only, no extensions.
     localparam [1023:0] EDID = {
         128'h00ffffffffffff004a92020000000000,
         128'h00240103800000780eee91a3544c9926,

@@ -1,4 +1,4 @@
-// Included inside testbenches that provide scl, tri1 sda and master_sda_low.
+// I2C master tasks for testbenches.
 integer half_period = 5000; // 100 kHz DDC, in ns
 task automatic i2c_start;
     begin

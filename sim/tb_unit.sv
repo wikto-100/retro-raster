@@ -83,10 +83,7 @@ module tb_unit;
         pixels_done = 1;
     end
 
-    // Filter chain: 8 one-clock stages; DP0 grayscale, DP1-DP7 pass through.
-    // Switches change mid-frame and must take effect at the next VSYNC.
-    // Exclusive: the active switch holds until it turns off; then the lowest
-    // switch still on takes over.
+    // Filter chain: switch changes apply at the next VSYNC; first switch on holds.
     localparam integer LATENCY = 8;
     reg ch_reset = 1;
     reg [7:0] dip = 0, model_enable = 0, model_enable_previous = 0;

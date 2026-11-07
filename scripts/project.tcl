@@ -1,4 +1,4 @@
-# Create or open the Vivado project under build/retro_raster.
+# Create or open build/retro_raster.
 set repo_root [file normalize [file join [file dirname [info script]] ..]]
 set project_dir [file join $repo_root build retro_raster]
 set project_file [file join $project_dir retro_raster.xpr]
@@ -8,7 +8,7 @@ if {[llength [get_projects -quiet]] == 0} {
         create_project retro_raster $project_dir -part $fpga_part
     }
 }
-# VHDL dependencies in compile order, then the SystemVerilog design.
+# VHDL in compile order, then SystemVerilog.
 set sources {
     vendor/digilent/common/DVI_Constants.vhd
     vendor/digilent/common/SyncAsync.vhd
@@ -45,7 +45,7 @@ set sources {
 }
 set paths {}
 foreach relative $sources { lappend paths [file normalize [file join $repo_root $relative]] }
-# Drop files that were moved or removed since the project was created.
+# Remove files no longer listed.
 foreach file [get_files -quiet -of_objects [get_filesets sources_1]] {
     if {[lsearch -exact $paths [file normalize $file]] < 0} { remove_files $file }
 }

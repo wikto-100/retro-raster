@@ -13,8 +13,7 @@ end entity;
 
 architecture rtl of hdmi_tx is
 begin
-    -- The recovered pixel clock drives a dedicated TX PLL. The inverted clock
-    -- pattern is required by the tested Mimas/monitor setup (normal RGB data).
+    -- kClkSwap: inverted TMDS clock pattern, needed by the tested monitor.
     core : entity work.rgb2dvi
         generic map (
             kGenerateSerialClk => true, kClkPrimitive => "PLL", kRstActiveHigh => true,

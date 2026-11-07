@@ -1,8 +1,6 @@
 `default_nettype none
 
-// One pixel per clock, with the same register delay for data and timing.
-// Begin displaying on a frame boundary after reset/clock recovery. No storage
-// of previous frames and no clock-domain crossing in the video stream.
+// Registers RGB and timing. Output starts at the first VSYNC after reset.
 module video_register (
     input wire pixel_clk,
     input wire reset,
